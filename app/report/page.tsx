@@ -87,22 +87,30 @@ export default function ReportPage() {
         className="bg-white p-6 rounded-lg shadow-md max-w-lg space-y-4 hover:shadow-lg transition"
       >
         <div>
-          <label className="block font-semibold text-blue-800 mb-1">Item Name</label>
+          <label htmlFor="item-name" className="block font-semibold text-blue-800 mb-1">
+            Item Name
+          </label>
           <input
+            id="item-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Item name"
+            title="Item name"
             className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-600"
             required
           />
         </div>
 
         <div>
-          <label className="block font-semibold text-blue-800 mb-1">Description</label>
+          <label htmlFor="item-description" className="block font-semibold text-blue-800 mb-1">
+            Description
+          </label>
           <textarea
+            id="item-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description"
+            title="Description"
             className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-600"
             rows={3}
             required
@@ -110,21 +118,29 @@ export default function ReportPage() {
         </div>
 
         <div>
-          <label className="block font-semibold text-blue-800 mb-1">Contact Info</label>
+          <label htmlFor="item-contact" className="block font-semibold text-blue-800 mb-1">
+            Contact Info
+          </label>
           <input
+            id="item-contact"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             placeholder="Contact info"
+            title="Contact info"
             className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-600"
             required
           />
         </div>
 
         <div>
-          <label className="block font-semibold text-blue-800 mb-1">Upload Image (optional)</label>
+          <label htmlFor="item-image" className="block font-semibold text-blue-800 mb-1">
+            Upload Image (optional)
+          </label>
           <input
+            id="item-image"
             type="file"
             accept="image/*"
+            title="Upload an image of the item"
             onChange={(e) => {
               const file = e.target.files?.[0] || null;
               setFile(file);

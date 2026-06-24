@@ -1,13 +1,17 @@
 @import "tailwindcss";
 
+/* Base theme variables */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
+  --background: #f9fafb; /* light gray background */
+  --foreground: #111827; /* dark text */
+  --primary: #1e3a8a;    /* deep blue */
+  --secondary: #16a34a;  /* green */
+  --accent: #facc15;     /* warm yellow */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,11 +20,38 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --primary: #3b82f6;   /* lighter blue for dark mode */
+    --secondary: #22c55e; /* lighter green */
+    --accent: #fde047;    /* softer yellow */
   }
 }
 
+/* Global body styles */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  line-height: 1.6;
+}
+
+/* Headings */
+h1, h2, h3 {
+  color: var(--primary);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+/* Links */
+a {
+  color: var(--secondary);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Buttons */
+button {
+  font-weight: 500;
+  transition: background-color 0.2s ease;
 }
