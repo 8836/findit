@@ -1,55 +1,73 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { collection, addDoc } from "firebase/firestore";
+import { db, auth } from "../../lib/firebase"; // ✅ import auth
+import { onAuthStateChanged, User } from "firebase/auth";
 
 export default function ReportPage() {
-  const [item, setItem] = useState("");
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [contact, setContact] = useState("");
+  const [user, setUser] = useState<User | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // ✅ Track logged-in user
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ item, description, contact });
-    alert("Report submitted!");
+
+    if (!user) {
+      alert("You must be logged in to report an item.");
+      return;
+    }
+
+    await addDoc(collection(db, "items"), {
+      name,
+      description,
+      contact,
+      uid: user.uid,        // ✅ link item to user
+      createdAt: new Date(),
+    });
+
+    setName("");
+    setDescription("");
+    setContact("");
+    alert("Item reported successfully!");
   };
 
+  if (!user) {
+    return <p className="p-6">Please log in to report an item.</p>;
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded shadow-md w-full max-w-md"
-      >
-        <h1 className="text-2xl font-bold mb-4">Report Lost Item</h1>
-
-        <input
-          type="text"
-          placeholder="Item Name"
-          value={item}
-          onChange={(e) => setItem(e.target.value)}
-          className="w-full p-2 mb-3 border rounded"
-        />
-
-        <textarea
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full p-2 mb-3 border rounded"
-        />
-
-        <input
-          type="text"
-          placeholder="Contact Info"
-          value={contact}
-          onChange={(e) => setContact(e.target.value)}
-          className="w-full p-2 mb-3 border rounded"
-        />
-
-        <button
-          type="submit"
-          className="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700"
-        >
-          Submit
-        </button>
-      </form>
-    </div>
+    <form onSubmit={handleSubmit} className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Report Lost Item</h1>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Item name"
+        className="border p-2 mb-2 w-full"
+      />
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Description"
+        className="border p-2 mb-2 w-full"
+      />
+      <input
+        value={contact}
+        onChange={(e) => setContact(e.target.value)}
+        placeholder="Contact info"
+        className="border p-2 mb-2 w-full"
+      />
+      <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded">
+        Submit
+      </button>
+    </form>
   );
 }
