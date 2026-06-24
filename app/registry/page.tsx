@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { collection, query, orderBy, limit, startAfter, getDocs, DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
@@ -17,15 +17,16 @@ export default function RegistryPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [loading, setLoading] = useState(false);
+  const lastDocRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null);
 
   const fetchItems = useCallback(async (nextPage = false) => {
     setLoading(true);
 
-    const q = nextPage && lastDoc
+    const q = nextPage && lastDocRef.current
       ? query(
           collection(db, "items"),
           orderBy("createdAt", "desc"),
-          startAfter(lastDoc),
+          startAfter(lastDocRef.current),
           limit(6)
         )
       : query(collection(db, "items"), orderBy("createdAt", "desc"), limit(6));
@@ -37,10 +38,22 @@ export default function RegistryPage() {
       ...doc.data(),
     })) as Item[];
 
-    setItems((prev) => [...prev, ...newItems]);
-    setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+    setItems((prev) => {
+      const mergedItems = [...prev, ...newItems];
+      return Array.from(
+        mergedItems.reduce<Map<string, Item>>((map, item) => {
+          if (!map.has(item.id)) {
+            map.set(item.id, item);
+          }
+          return map;
+        }, new Map()).values()
+      );
+    });
+    const nextDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+    setLastDoc(nextDoc);
+    lastDocRef.current = nextDoc;
     setLoading(false);
-  }, [lastDoc]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
