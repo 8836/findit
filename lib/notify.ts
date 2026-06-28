@@ -1,6 +1,6 @@
 import toast from "react-hot-toast";
 
-// ? Success toast
+// ✅ Success toast
 export const notifySuccess = (message: string, id?: string) => {
   toast.success(message, {
     id,
@@ -11,7 +11,7 @@ export const notifySuccess = (message: string, id?: string) => {
   });
 };
 
-// ? Error toast
+// ✅ Error toast
 export const notifyError = (message: string, id?: string) => {
   toast.error(message, {
     id,
@@ -22,7 +22,7 @@ export const notifyError = (message: string, id?: string) => {
   });
 };
 
-// ? Info toast
+// ✅ Info toast
 export const notifyInfo = (message: string, id?: string) => {
   toast(message, {
     id,
@@ -33,7 +33,7 @@ export const notifyInfo = (message: string, id?: string) => {
   });
 };
 
-// ? Loading toast
+// ✅ Loading toast
 export const notifyLoading = (message: string) => {
   return toast.loading(message, {
     style: {
@@ -43,7 +43,7 @@ export const notifyLoading = (message: string) => {
   });
 };
 
-// ? Dismiss toast (optional)
+// ✅ Dismiss toast (optional)
 export const notifyDismiss = (id: string) => {
   toast.dismiss(id);
 };

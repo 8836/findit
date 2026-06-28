@@ -1,0 +1,10 @@
+# Ignore build and generated files from the root project
+.next/**
+out/**
+build/**
+next-env.d.ts
+
+# Ignore built functions output and packages
+functions/lib/**
+functions/node_modules/**
+functions/.firebase/**

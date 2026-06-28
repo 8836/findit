@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState } from "react";
 import { auth, getFirebaseAuthErrorMessage } from "../../lib/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
@@ -13,7 +13,7 @@ export default function ResetPasswordPage() {
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email);
-      setSuccess(true);
+      setSuccess(true); // ✅ show confirmation screen
       setEmail("");
     } catch (error) {
       alert(getFirebaseAuthErrorMessage(error));
@@ -28,7 +28,8 @@ export default function ResetPasswordPage() {
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md text-center space-y-6">
           <h1 className="text-3xl font-bold text-green-600">Email Sent!</h1>
           <p className="text-gray-700">
-            Please check your inbox for a password reset link. Follow the instructions to set a new password.
+            Please check your inbox for a password reset link. Follow the
+            instructions to set a new password.
           </p>
           <a
             href="/login"
@@ -69,14 +70,15 @@ export default function ResetPasswordPage() {
           {loading ? "Sending..." : "Send Reset Link"}
         </button>
 
+        {/* 🔹 Extra navigation links */}
         <p className="text-sm text-gray-600 text-center">
-          Remembered your password?{' '}
+          Remembered your password?{" "}
           <a href="/login" className="text-blue-600 font-semibold hover:underline">
             Login
           </a>
         </p>
         <p className="text-sm text-gray-600 text-center">
-          Don&apos;t have an account?{' '}
+          Don’t have an account?{" "}
           <a href="/signup" className="text-blue-600 font-semibold hover:underline">
             Sign up
           </a>

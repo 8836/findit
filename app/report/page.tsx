@@ -53,6 +53,7 @@ export default function ReportPage() {
         contact,
         imageUrl,
         createdAt: serverTimestamp(),
+        claimed: false, // ✅ new field added
       });
 
       // ✅ Update toast to success
