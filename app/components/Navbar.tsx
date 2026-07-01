@@ -23,23 +23,19 @@ export default function Navbar() {
   };
 
   const linkClasses = (path: string) =>
-    `px-3 py-2 rounded transition-colors ${
-      pathname === path
-        ? "bg-blue-900 text-white font-semibold"
-        : "hover:bg-blue-700 hover:text-white"
+    `px-3 py-2 rounded transition-colors text-white ${
+      pathname === path ? "bg-blue-700 font-semibold" : "hover:bg-blue-600/90"
     }`;
 
   return (
-    <nav className="bg-blue-800 text-white px-6 py-3 flex justify-between items-center shadow-md">
-      {/* Brand Logo */}
-      <div className="font-bold text-lg tracking-wide">
-        <Link href="/" className="hover:text-green-400 transition-colors">
+    <nav className="bg-gradient-to-r from-blue-950 via-blue-800 to-sky-700 text-white px-6 py-4 shadow-2xl shadow-blue-900/20">
+      <div className="font-bold text-xl tracking-[0.2em] uppercase text-white">
+        <Link href="/" className="hover:text-yellow-300 transition-colors">
           FindIt
         </Link>
       </div>
 
-      {/* Navigation Links */}
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <Link href="/" className={linkClasses("/")}>
           Home
         </Link>
@@ -51,6 +47,9 @@ export default function Navbar() {
         </Link>
         <Link href="/report" className={linkClasses("/report")}>
           Report
+        </Link>
+        <Link href="/support" className={linkClasses("/support")}>
+          Support
         </Link>
 
         {!user ? (
@@ -65,7 +64,7 @@ export default function Navbar() {
         ) : (
           <button
             onClick={handleLogout}
-            className="px-3 py-2 rounded bg-red-600 hover:bg-red-700 transition-colors"
+            className="px-4 py-2 rounded-full bg-yellow-400 text-blue-950 font-semibold shadow-lg shadow-yellow-500/20 hover:bg-yellow-300"
           >
             Logout
           </button>

@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [claimingItemId, setClaimingItemId] = useState<string | null>(null);
+  const [confirmClaimItem, setConfirmClaimItem] = useState<Item | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterByDate, setFilterByDate] = useState("all");
   const router = useRouter();
@@ -105,15 +106,25 @@ export default function DashboardPage() {
     }
   };
 
-  const handleClaim = async (id: string) => {
-    setClaimingItemId(id);
+  const requestClaim = (item: Item) => {
+    setConfirmClaimItem(item);
+  };
+
+  const cancelClaim = () => {
+    setConfirmClaimItem(null);
+  };
+
+  const handleClaim = async () => {
+    if (!confirmClaimItem) return;
+    setClaimingItemId(confirmClaimItem.id);
     const toastId = notifyLoading("Claiming item...");
     try {
-      await updateDoc(doc(db, "items", id), {
+      await updateDoc(doc(db, "items", confirmClaimItem.id), {
         claimed: true,
         claimedAt: Timestamp.now(),
       });
       notifySuccess("Item marked as claimed!", toastId);
+      setConfirmClaimItem(null);
     } catch (err) {
       console.error(err);
       notifyError("Error claiming item.", toastId);
@@ -163,147 +174,227 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-(--color-background) p-6">
-      <h1 className="text-3xl font-bold text-(--color-primary) mb-6">My Reported Items</h1>
-
-      {/* Search & Filter Controls */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex flex-1 gap-2">
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-(--color-primary)"
-          />
-          <button
-            type="button"
-            onClick={() => setSearchTerm("")}
-            disabled={!searchTerm}
-            className="self-stretch px-4 py-2 rounded border border-gray-300 bg-white text-sm font-medium text-(--color-primary) hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Clear
-          </button>
+    <div className="min-h-screen bg-slate-100 p-6">
+      <div className="max-w-8xl mx-auto space-y-6">
+        <div className="rounded-4xl bg-blue-950/95 p-8 shadow-2xl shadow-blue-900/10 text-white">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-sky-200 font-medium">Dashboard</p>
+              <h1 className="text-4xl font-bold tracking-tight">My Reported Items</h1>
+              <p className="mt-2 max-w-2xl text-sky-100">
+                Manage your reports, claim statuses, and actions from a clean dashboard with fast search and filters.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              <div className="rounded-3xl bg-white/10 border border-white/15 p-4">
+                <p className="text-sm uppercase tracking-[0.24em] text-sky-200 font-medium">Total items</p>
+                <p className="mt-3 text-3xl font-semibold">{items.length}</p>
+              </div>
+              <div className="rounded-3xl bg-white/10 border border-white/15 p-4">
+                <p className="text-sm uppercase tracking-[0.24em] text-sky-200 font-medium">Claimed</p>
+                <p className="mt-3 text-3xl font-semibold">{items.filter((item) => item.claimed).length}</p>
+              </div>
+              <div className="rounded-3xl bg-white/10 border border-white/15 p-4">
+                <p className="text-sm uppercase tracking-[0.24em] text-sky-200 font-medium">Open</p>
+                <p className="mt-3 text-3xl font-semibold">{items.filter((item) => !item.claimed).length}</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <label htmlFor="filterByDate" className="sr-only">
-          Filter by date
-        </label>
-        <select
-          id="filterByDate"
-          value={filterByDate}
-          onChange={(e) => setFilterByDate(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-(--color-primary)"
-        >
-          <option value="all">All Dates</option>
-          <option value="today">Today</option>
-          <option value="week">This Week</option>
-        </select>
-      </div>
 
-      {loading ? (
-        <p className="text-(--color-foreground) opacity-70">Loading your items...</p>
-      ) : filteredItems.length === 0 ? (
-        <p className="text-(--color-foreground) opacity-70">
-          No items match your search/filter.{" "}
-          <a href="/report" className="text-(--color-secondary) font-semibold hover:underline">
-            Report one now
-          </a>.
-        </p>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          {filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className="bg-(--color-background) p-6 rounded-lg shadow-md hover:shadow-lg transition border border-gray-200"
-            >
-              {item.imageUrl && (
-                <Image
-                  src={item.imageUrl}
-                  alt={item.name}
-                  width={640}
-                  height={320}
-                  className="w-full h-48 object-cover rounded mb-4"
-                  unoptimized
-                />
-              )}
-              <h2 className="text-xl font-semibold text-(--color-primary)">{item.name}</h2>
-              <p className="text-(--color-foreground) mt-2">{item.description}</p>
-              <p className="text-sm text-(--color-foreground) opacity-70 mt-1">Contact: {item.contact}</p>
-              {item.createdAt && (
-                <p className="text-xs text-(--color-foreground) opacity-50 mt-1">
-                  Reported on {item.createdAt.toDate().toLocaleDateString()}
-                </p>
-              )}
+        <div className="rounded-4xl bg-white p-6 shadow-xl shadow-slate-300/40">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex-1 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+              <input
+                type="text"
+                placeholder="Search items..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full border border-slate-200 bg-white py-3 px-4 rounded-2xl shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div className="flex gap-3 flex-col sm:flex-row items-stretch sm:items-center">
+              <label htmlFor="filterByDate" className="sr-only">
+                Filter by date
+              </label>
+              <select
+                id="filterByDate"
+                value={filterByDate}
+                onChange={(e) => setFilterByDate(e.target.value)}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                disabled={!searchTerm}
+                className="rounded-2xl bg-blue-950 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/10 hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
 
-              {editingItemId === item.id ? (
-                <div className="mt-4 space-y-2">
-                  <input
-                    type="text"
-                    value={editingName}
-                    onChange={(event) => setEditingName(event.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-(--color-primary)"
-                    placeholder="Enter new item name"
+        {loading ? (
+          <p className="text-slate-700">Loading your items...</p>
+        ) : filteredItems.length === 0 ? (
+          <div className="rounded-3xl bg-white p-8 shadow-xl shadow-slate-200/70">
+            <p className="text-slate-700">
+              No items match your search/filter.
+              <a href="/report" className="text-blue-900 font-semibold hover:underline">
+                Report one now
+              </a>.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6 xl:grid-cols-2">
+            {filteredItems.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/70 border border-slate-200 transition hover:-translate-y-1 hover:shadow-2xl"
+              >
+                {item.imageUrl && (
+                  <Image
+                    src={item.imageUrl}
+                    alt={item.name}
+                    width={640}
+                    height={320}
+                    className="w-full h-48 object-cover rounded-3xl mb-5"
+                    unoptimized
                   />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => saveEdit(item.id)}
-                      className="bg-(--color-secondary) text-white px-3 py-1 rounded hover:opacity-90"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={cancelEdit}
-                      className="bg-gray-300 text-(--color-foreground) px-3 py-1 rounded hover:bg-gray-400"
-                    >
-                      Cancel
-                    </button>
+                )}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-2xl font-semibold text-slate-900">{item.name}</h2>
+                    <p className="mt-2 text-slate-600">{item.description}</p>
                   </div>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      item.claimed
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-sky-100 text-sky-800"
+                    }`}
+                  >
+                    {item.claimed ? "Claimed" : "Open"}
+                  </span>
                 </div>
-              ) : (
-                <div className="flex flex-wrap gap-2 mt-4">
+                <div className="mt-5 space-y-2 text-sm text-slate-600">
+                  <p>Contact: {item.contact}</p>
+                  {item.createdAt && (
+                    <p>Reported: {item.createdAt.toDate().toLocaleDateString()}</p>
+                  )}
+                  {item.claimedAt && (
+                    <p>Claimed: {item.claimedAt.toDate().toLocaleDateString()}</p>
+                  )}
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-3">
                   {!item.claimed && (
                     <>
                       <button
                         onClick={() => startEdit(item.id, item.name)}
-                        className="bg-(--color-primary) text-white px-3 py-1 rounded hover:opacity-90"
+                        className="rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(item.id)}
-                        className="bg-red-600 text-white px-3 py-1 rounded hover:opacity-90"
+                        className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
                       >
                         Delete
                       </button>
                     </>
                   )}
-                  {!item.claimed ? (
-                    <button
-                      onClick={() => handleClaim(item.id)}
-                      className="bg-(--color-accent) text-black px-3 py-1 rounded hover:opacity-90"
-                      disabled={claimingItemId === item.id}
-                    >
-                      {claimingItemId === item.id ? "Claiming..." : "Claim Item"}
-                    </button>
-                  ) : (
-                    <div>
-                      <span className="inline-block bg-(--color-secondary)/10 text-(--color-secondary) 
-                                       text-xs font-semibold px-2 py-1 rounded mt-2">
-                        ✅ Claimed
-                      </span>
-                      {item.claimedAt && (
-                        <p className="text-xs text-(--color-secondary) mt-1">
-                          Claimed on {item.claimedAt.toDate().toLocaleDateString()}
-                        </p>
-                      )}
+                  {editingItemId === item.id ? (
+                    <div className="mt-4 w-full space-y-3">
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(event) => setEditingName(event.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        placeholder="Update item name"
+                      />
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={() => saveEdit(item.id)}
+                          className="rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="rounded-full bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-400"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
+                  ) : (
+                    <>
+                      {!item.claimed && (
+                        <>
+                          <button
+                            onClick={() => startEdit(item.id, item.name)}
+                            className="rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                      {!item.claimed ? (
+                        <button
+                          onClick={() => requestClaim(item)}
+                          className="rounded-full bg-yellow-400 px-4 py-2 text-sm font-semibold text-blue-950 shadow-sm hover:bg-yellow-300"
+                          disabled={claimingItemId === item.id}
+                        >
+                          {claimingItemId === item.id ? "Claiming..." : "Claim Item"}
+                        </button>
+                      ) : null}
+                    </>
                   )}
                 </div>
-              )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {confirmClaimItem ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-4xl bg-linear-to-br from-blue-900 via-slate-900 to-sky-700 p-8 text-white shadow-2xl shadow-slate-900/40">
+            <h2 className="text-3xl font-bold">Claim Item?</h2>
+            <p className="mt-4 text-slate-100/90">
+              Are you sure you want to mark <span className="font-semibold">{confirmClaimItem.name}</span> as claimed?
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={cancelClaim}
+                className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-white hover:bg-white/20"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleClaim}
+                className="rounded-full bg-yellow-400 px-5 py-3 text-sm font-semibold text-blue-950 shadow-lg shadow-yellow-400/30 hover:bg-yellow-300"
+              >
+                Yes, Claim Item
+              </button>
             </div>
-          ))}
+          </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

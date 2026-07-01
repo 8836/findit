@@ -21,18 +21,27 @@ export const notifyClaim = onDocumentUpdated("items/{itemId}", async (event) => 
 
   // Trigger only when claimed flips from false → true
   if (!before.claimed && after.claimed) {
+    if (!after.contact) {
+      console.error("No contact info found for item:", event.params.itemId);
+      return;
+    }
+
+    const claimedAt = after.claimedAt
+      ? after.claimedAt.toDate().toLocaleString()
+      : "just now";
+
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: after.contact, // reporter’s contact info
       subject: "Your item has been claimed!",
-      text: `Hello, your item "${after.name}" has been marked as claimed. Please connect with the claimer to finalize.`,
+      text: `Hello, your item "${after.name}" has been marked as claimed on ${claimedAt}. Please connect with the claimer to finalize.`,
     };
 
     try {
       await transporter.sendMail(mailOptions);
-      console.log("Email sent to:", after.contact);
+      console.log(`✅ Email sent to: ${after.contact}`);
     } catch (error) {
-      console.error("Error sending email:", error);
+      console.error("❌ Error sending email:", error);
     }
   }
 });

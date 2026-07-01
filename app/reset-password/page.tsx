@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 import { auth, getFirebaseAuthErrorMessage } from "../../lib/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
+import { notifySuccess, notifyError, notifyLoading } from "../../lib/notify";
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
@@ -11,12 +12,15 @@ export default function ResetPasswordPage() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const toastId = notifyLoading("Sending reset link...");
+
     try {
       await sendPasswordResetEmail(auth, email);
-      setSuccess(true); // ✅ show confirmation screen
+      notifySuccess("Reset link sent to your email!", toastId);
+      setSuccess(true);
       setEmail("");
     } catch (error) {
-      alert(getFirebaseAuthErrorMessage(error));
+      notifyError(getFirebaseAuthErrorMessage(error), toastId);
     } finally {
       setLoading(false);
     }
@@ -24,66 +28,82 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md text-center space-y-6">
-          <h1 className="text-3xl font-bold text-green-600">Email Sent!</h1>
-          <p className="text-gray-700">
-            Please check your inbox for a password reset link. Follow the
-            instructions to set a new password.
-          </p>
-          <a
-            href="/login"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 inline-block"
-          >
-            Back to Login
-          </a>
+      <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <div className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-8 text-center space-y-6 border border-white/20">
+            <div className="text-5xl">✓</div>
+            <h1 className="text-3xl font-bold text-white">Email Sent!</h1>
+            <p className="text-sky-100 font-medium">
+              Check your inbox for a password reset link. Follow the instructions to set a new password.
+            </p>
+            <a
+              href="/login"
+              className="inline-block w-full rounded-full bg-yellow-400 hover:bg-yellow-300 px-6 py-3 text-sm font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
+            >
+              Back to Login
+            </a>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <form
-        onSubmit={handleReset}
-        className="bg-white p-8 rounded-lg shadow-md w-full max-w-md space-y-6 hover:shadow-lg transition"
-      >
-        <h1 className="text-3xl font-bold text-blue-800">Reset Password</h1>
-
-        <div>
-          <label className="block font-semibold text-blue-800 mb-1">Email</label>
-          <input
-            type="email"
-            placeholder="Enter your account email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-600"
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full disabled:opacity-50"
+    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <form
+          onSubmit={handleReset}
+          className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-8 space-y-6 border border-white/20"
         >
-          {loading ? "Sending..." : "Send Reset Link"}
-        </button>
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-white tracking-tight">FindIt</h1>
+            <p className="mt-2 text-sky-100 font-medium">Reset your password</p>
+          </div>
 
-        {/* 🔹 Extra navigation links */}
-        <p className="text-sm text-gray-600 text-center">
-          Remembered your password?{" "}
-          <a href="/login" className="text-blue-600 font-semibold hover:underline">
-            Login
-          </a>
-        </p>
-        <p className="text-sm text-gray-600 text-center">
-          Don’t have an account?{" "}
-          <a href="/signup" className="text-blue-600 font-semibold hover:underline">
-            Sign up
-          </a>
-        </p>
-      </form>
+          <div>
+            <label className="block text-sm font-semibold text-white mb-3 uppercase tracking-[0.1em]">
+              Email address
+            </label>
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-full bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 px-6 py-3 text-sm font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
+          >
+            {loading ? "Sending..." : "Send Reset Link"}
+          </button>
+
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/20"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-2 bg-white/5 text-white/60">or</span>
+            </div>
+          </div>
+
+          <p className="text-sm text-white/70 text-center">
+            <a href="/login" className="font-bold text-cyan-300 hover:text-cyan-100">
+              Back to Login
+            </a>
+          </p>
+          <p className="text-sm text-white/70 text-center">
+            Don't have an account?{" "}
+            <a href="/signup" className="font-bold text-yellow-300 hover:text-yellow-100">
+              Sign up
+            </a>
+          </p>
+        </form>
+      </div>
     </div>
   );
 }
