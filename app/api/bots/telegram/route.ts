@@ -1,21 +1,32 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { BotService } from '@/lib/bot-service';
 
-export async function POST(request: NextRequest) {
-  try {
-console.log("========== TELEGRAM UPDATE ==========");
-const update = await request.json();
-console.log(JSON.stringify(update, null, 2));
-
-const message = update.message;
-
-if (!message) {
-    console.log("No message object received.");
-    return NextResponse.json({ ok: true });
+// ✅ Base URL helper
+function getBaseUrl() {
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000';
+  }
+  return 'https://findit-amber.vercel.app';
 }
 
-console.log("Chat ID:", message.chat?.id);
-console.log("Text:", message.text);
+export async function POST(request: NextRequest) {
+  try {
+    console.log("========== TELEGRAM UPDATE ==========");
+    const update = await request.json();
+    console.log(JSON.stringify(update, null, 2));
+
+    const message = update.message;
+
+    if (!message) {
+      console.log("No message object received.");
+      return NextResponse.json({ ok: true });
+    }
+
+    console.log("Chat ID:", message.chat?.id);
+    console.log("Text:", message.text);
 
     if (!message?.text || !message.chat?.id) {
       return NextResponse.json({ ok: true });
@@ -24,6 +35,10 @@ console.log("Text:", message.text);
     const chatId = message.chat.id.toString();
     const messageText = message.text;
     const userId = chatId; // 🔹 consistent identifier
+
+    // ✅ Log the chosen base URL for debugging
+    const baseUrl = getBaseUrl();
+    console.log("Webhook base URL:", baseUrl);
 
     // Store chatId in Firestore
     const user = await BotService.initializeUser(userId, 'telegram', chatId);
@@ -40,7 +55,7 @@ console.log("Text:", message.text);
           const result = await BotService.handleReportLost(userId, 'telegram', {
             name: parts[0],
             description: parts[2] ? `${parts[1]}\nLocation/notes: ${parts.slice(2).join(' | ')}` : parts[1],
-            contact: chatId, // 🔹 ensures notifyReporter can find them
+            contact: chatId,
           });
           response = result.message;
           BotService.resetSession(userId, 'telegram');
@@ -150,9 +165,9 @@ console.log("Text:", message.text);
     }
 
     console.log("Replying with:");
-console.log(response);
+    console.log(response);
 
-const sendResult = await sendTelegramMessage(chatId, response);
+    const sendResult = await sendTelegramMessage(chatId, response);
 
     if (sendResult) {
       return sendResult;
@@ -172,11 +187,15 @@ export async function GET() {
   return NextResponse.json({
     status: 'Telegram bot endpoint is running',
     timestamp: new Date().toISOString(),
+    baseUrl: getBaseUrl(), // ✅ show which URL is active
   });
 }
 
 async function saveTelegramReport(userId: string, chatId: string, type: 'lost' | 'found', reportText: string) {
-  const parts = reportText.split('|').map((part) => part.trim()).filter(Boolean);
+  // Normalize spacing around pipes
+  const parts = reportText.replace(/\s*\|\s*/g, '|').split('|').map(p => p.trim()).filter(Boolean);
+
+  console.log("Parsed parts:", parts); // ✅ Debugging log
 
   if (parts.length < 2) {
     return type === 'lost'
@@ -187,15 +206,21 @@ async function saveTelegramReport(userId: string, chatId: string, type: 'lost' |
   const itemData = {
     name: parts[0],
     description: parts[2] ? `${parts[1]}\nLocation/notes: ${parts.slice(2).join(' | ')}` : parts[1],
-    contact: chatId, // 🔹 ensures notifyReporter can find them
+    contact: chatId,
   };
 
-  const result = type === 'lost'
-    ? await BotService.handleReportLost(userId, 'telegram', itemData)
-    : await BotService.handleReportFound(userId, 'telegram', itemData);
+  try {
+    const result = type === 'lost'
+      ? await BotService.handleReportLost(userId, 'telegram', itemData)
+      : await BotService.handleReportFound(userId, 'telegram', itemData);
 
-  return result.message;
+    return result.message;
+  } catch (err) {
+    console.error("Report failed:", err);
+    return "Something went wrong saving your report. Please try again.";
+  }
 }
+
 
 async function sendTelegramMessage(chatId: string | number, text: string) {
   const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -215,41 +240,41 @@ async function sendTelegramMessage(chatId: string | number, text: string) {
   }
 
   console.log("Sending message to Telegram...");
-console.log(chatId);
-console.log(text);
+  console.log(chatId);
+  console.log(text);
 
-const telegramResponse = await fetch(
+  const telegramResponse = await fetch(
     `https://api.telegram.org/bot${telegramToken}/sendMessage`,
     {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            chat_id: chatId,
-            text,
-        }),
-    }
-);
-
-const body = await telegramResponse.text();
-
-console.log("Telegram Status:", telegramResponse.status);
-console.log("Telegram Response:", body);
-
-if (!telegramResponse.ok) {
-  console.error("Telegram send failed:", body);
-
-  return NextResponse.json(
-    {
-      ok: false,
-      error: "Failed to send Telegram response",
-    },
-    {
-      status: 502,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+      }),
     }
   );
-}
+
+  const body = await telegramResponse.text();
+
+  console.log("Telegram Status:", telegramResponse.status);
+  console.log("Telegram Response:", body);
+
+  if (!telegramResponse.ok) {
+    console.error("Telegram send failed:", body);
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Failed to send Telegram response",
+      },
+      {
+        status: 502,
+      }
+    );
+  }
 
   return null;
 }
