@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { auth } from "../../lib/firebase";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
@@ -28,14 +29,21 @@ export default function Navbar() {
     }`;
 
   return (
-    <nav className="bg-gradient-to-r from-blue-950 via-blue-800 to-sky-700 text-white px-6 py-4 shadow-2xl shadow-blue-900/20">
-      <div className="font-bold text-xl tracking-[0.2em] uppercase text-white">
-        <Link href="/" className="hover:text-yellow-300 transition-colors">
-          FindIt
+    <nav className="flex flex-col gap-4 bg-gradient-to-r from-blue-950 via-blue-800 to-sky-700 px-6 py-5 text-white shadow-2xl shadow-blue-900/20 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-90">
+          <Image
+            src="/findit-logo-transparent.png"
+            alt="FindIt"
+            width={128}
+            height={72}
+            priority
+            className="h-20 w-auto"
+          />
         </Link>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3 text-base font-semibold">
         <Link href="/" className={linkClasses("/")}>
           Home
         </Link>

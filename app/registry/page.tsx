@@ -3,6 +3,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { collection, query, orderBy, limit, startAfter, getDocs, DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { notifyError } from "../../lib/notify";
 
 interface Item {
   id: string;
@@ -17,42 +18,61 @@ export default function RegistryPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const lastDocRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const loadingRef = useRef(false);
+  const hasMoreRef = useRef(true);
 
   const fetchItems = useCallback(async (nextPage = false) => {
+    if (loadingRef.current || (nextPage && !hasMoreRef.current)) {
+      return;
+    }
+
+    loadingRef.current = true;
     setLoading(true);
 
-    const q = nextPage && lastDocRef.current
-      ? query(
-          collection(db, "items"),
-          orderBy("createdAt", "desc"),
-          startAfter(lastDocRef.current),
-          limit(6)
-        )
-      : query(collection(db, "items"), orderBy("createdAt", "desc"), limit(6));
+    try {
+      const pageSize = 6;
+      const q = nextPage && lastDocRef.current
+        ? query(
+            collection(db, "items"),
+            orderBy("createdAt", "desc"),
+            startAfter(lastDocRef.current),
+            limit(pageSize)
+          )
+        : query(collection(db, "items"), orderBy("createdAt", "desc"), limit(pageSize));
 
-    const snapshot = await getDocs(q);
+      const snapshot = await getDocs(q);
 
-    const newItems = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Item[];
+      const newItems = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Item[];
 
-    setItems((prev) => {
-      const mergedItems = [...prev, ...newItems];
-      return Array.from(
-        mergedItems.reduce<Map<string, Item>>((map, item) => {
-          if (!map.has(item.id)) {
-            map.set(item.id, item);
-          }
-          return map;
-        }, new Map()).values()
-      );
-    });
-    const nextDoc = snapshot.docs[snapshot.docs.length - 1] || null;
-    setLastDoc(nextDoc);
-    lastDocRef.current = nextDoc;
-    setLoading(false);
+      setItems((prev) => {
+        const mergedItems = [...prev, ...newItems];
+        return Array.from(
+          mergedItems.reduce<Map<string, Item>>((map, item) => {
+            if (!map.has(item.id)) {
+              map.set(item.id, item);
+            }
+            return map;
+          }, new Map()).values()
+        );
+      });
+      const nextDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+      const moreResultsAvailable = snapshot.docs.length === pageSize;
+      setLastDoc(nextDoc);
+      setHasMore(moreResultsAvailable);
+      hasMoreRef.current = moreResultsAvailable;
+      lastDocRef.current = nextDoc;
+    } catch (error) {
+      console.error(error);
+      notifyError("Could not load registry items.");
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -77,6 +97,7 @@ export default function RegistryPage() {
                 alt={item.name}
                 fill
                 className="object-cover"
+                unoptimized
               />
             </div>
           )}
@@ -87,13 +108,13 @@ export default function RegistryPage() {
         ))}
       </div>
 
-      {/* Load More Button */}
-      {lastDoc && (
+      {lastDoc && hasMore && (
         <button
           onClick={() => fetchItems(true)}
+          disabled={loading}
           className="mt-6 px-4 py-2 bg-blue-600 text-white rounded"
         >
-          Load More
+          {loading ? "Loading..." : "Load More"}
         </button>
       )}
 

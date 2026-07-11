@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useState } from "react";
+import Image from "next/image";
 import { auth, getFirebaseAuthErrorMessage } from "../../lib/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { notifySuccess, notifyError, notifyLoading } from "../../lib/notify";
@@ -13,9 +14,13 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setLoading(true);
     const toastId = notifyLoading("Sending reset link...");
+    const normalizedEmail = email.trim().toLowerCase();
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, normalizedEmail, {
+        url: `${window.location.origin}/login`,
+        handleCodeInApp: false,
+      });
       notifySuccess("Reset link sent to your email!", toastId);
       setSuccess(true);
       setEmail("");
@@ -50,14 +55,21 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
         <form
           onSubmit={handleReset}
-          className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-8 space-y-6 border border-white/20"
+          className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-10 space-y-7 border border-white/20"
         >
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white tracking-tight">FindIt</h1>
-            <p className="mt-2 text-sky-100 font-medium">Reset your password</p>
+          <div className="text-center mb-10">
+            <Image
+              src="/findit-logo-transparent.png"
+              alt="FindIt"
+              width={520}
+              height={300}
+              priority
+              className="mx-auto h-auto w-full max-w-sm"
+            />
+            <p className="mt-4 text-xl font-semibold text-sky-100">Reset your password</p>
           </div>
 
           <div>
@@ -77,7 +89,7 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 px-6 py-3 text-sm font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
+            className="w-full rounded-full bg-yellow-400 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 px-6 py-4 text-base font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
           >
             {loading ? "Sending..." : "Send Reset Link"}
           </button>
@@ -97,7 +109,7 @@ export default function ResetPasswordPage() {
             </a>
           </p>
           <p className="text-sm text-white/70 text-center">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <a href="/signup" className="font-bold text-yellow-300 hover:text-yellow-100">
               Sign up
             </a>

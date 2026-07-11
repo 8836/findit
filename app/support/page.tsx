@@ -81,20 +81,20 @@ export default function SupportPage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Support Center</h1>
           <p className="text-sky-100 font-medium">
-            Have a question or issue? We're here to help. Submit a support ticket and we'll get back to you as soon as possible.
+            Have a question or issue? We&apos;re here to help. Submit a support ticket and we&apos;ll get back to you as soon as possible.
           </p>
         </div>
 
         {/* Support Info Cards */}
         <div className="grid md:grid-cols-2 gap-4 mb-8">
           <div className="rounded-4xl bg-white/10 backdrop-blur-md p-6 border border-white/20">
-            <h3 className="text-lg font-bold text-white mb-2">📧 Email Support</h3>
+            <h3 className="text-lg font-bold text-white mb-2">Email Support</h3>
             <p className="text-white/70 text-sm">
               Email us directly at <a href="mailto:support@findit.local" className="text-yellow-300 hover:text-yellow-100 font-bold">support@findit.local</a>
             </p>
           </div>
           <div className="rounded-4xl bg-white/10 backdrop-blur-md p-6 border border-white/20">
-            <h3 className="text-lg font-bold text-white mb-2">⏱️ Response Time</h3>
+            <h3 className="text-lg font-bold text-white mb-2">Response Time</h3>
             <p className="text-white/70 text-sm">
               We typically respond within 24-48 hours during business days.
             </p>
@@ -207,7 +207,7 @@ export default function SupportPage() {
                 <span className="text-yellow-300">+</span>
               </summary>
               <p className="mt-3 text-white/70">
-                Click on the "Report" button in the navigation menu and fill out the form with details about your lost item, including a photo if possible. We'll add it to our registry immediately.
+                Click on the &quot;Report&quot; button in the navigation menu and fill out the form with details about your lost item, including a photo if possible. We&apos;ll add it to our registry immediately.
               </p>
             </details>
 
@@ -217,7 +217,7 @@ export default function SupportPage() {
                 <span className="text-yellow-300">+</span>
               </summary>
               <p className="mt-3 text-white/70">
-                Go to the Dashboard, find the item you're looking for, and click the "Claim Item" button. The original reporter will be notified and can contact you directly.
+                Go to the Dashboard, find the item you&apos;re looking for, and click the &quot;Claim Item&quot; button. The original reporter will be notified and can contact you directly.
               </p>
             </details>
 
@@ -246,7 +246,7 @@ export default function SupportPage() {
         {/* Back to Home */}
         <div className="mt-8 text-center">
           <Link href="/" className="text-cyan-300 hover:text-cyan-100 font-bold">
-            ← Back to Home
+            Back to Home
           </Link>
         </div>
       </div>

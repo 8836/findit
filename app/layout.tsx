@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Navbar from "./components/Navbar"; // ✅ use Navbar instead of Header
+import Navbar from "./components/Navbar";
 import "./globals.css";
-import { Toaster } from "react-hot-toast"; // ✅ import toast provider
+import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,18 +30,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col">
-        {/* ✅ Global Navbar */}
         <Navbar />
 
-        {/* ✅ Page Content */}
         <main className="flex-1">{children}</main>
 
-        {/* ✅ Footer */}
         <footer className="bg-gray-100 text-center p-4 text-sm text-gray-600">
-          © {new Date().getFullYear()} FindIt — Lost & Found Registry
+          &copy; {new Date().getFullYear()} FindIt - Lost & Found Registry
         </footer>
 
-        {/* ✅ Toast Notifications */}
         <Toaster
           position="top-right"
           toastOptions={{

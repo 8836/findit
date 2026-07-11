@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../../lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { notifySuccess, notifyError, notifyLoading } from "../../lib/notify";
 
 export default function ReportPage() {
@@ -22,6 +21,14 @@ export default function ReportPage() {
     return () => unsubscribe();
   }, []);
 
+  const toBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -34,11 +41,23 @@ export default function ReportPage() {
 
     try {
       let imageUrl = "";
+
       if (file) {
-        const storage = getStorage();
-        const storageRef = ref(storage, `items/${user.uid}/${file.name}`);
-        await uploadBytes(storageRef, file);
-        imageUrl = await getDownloadURL(storageRef);
+        try {
+          const base64 = await toBase64(file);
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file: base64 }),
+          });
+          const data = await res.json();
+          if (data.url) {
+            imageUrl = data.url;
+          }
+        } catch (uploadErr) {
+          console.error("Cloudinary upload failed:", uploadErr);
+          notifyError("Image upload failed, but item was saved.", toastId);
+        }
       }
 
       await addDoc(collection(db, "items"), {
@@ -59,7 +78,7 @@ export default function ReportPage() {
       setFile(null);
       setPreview(null);
     } catch (err) {
-      console.error(err);
+      console.error("Report submission failed:", err);
       notifyError("Error reporting item. Please try again.", toastId);
     }
   };
@@ -69,7 +88,10 @@ export default function ReportPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 flex items-center justify-center p-6">
         <div className="text-center">
           <p className="text-sky-100 font-medium text-lg">Please log in to report an item.</p>
-          <a href="/login" className="mt-4 inline-block rounded-full bg-yellow-400 hover:bg-yellow-300 px-8 py-3 font-bold text-blue-950">
+          <a
+            href="/login"
+            className="mt-4 inline-block rounded-full bg-yellow-400 hover:bg-yellow-300 px-8 py-3 font-bold text-blue-950"
+          >
             Go to Login
           </a>
         </div>
@@ -81,7 +103,7 @@ export default function ReportPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 p-6">
       <div className="max-w-lg mx-auto">
         <h1 className="text-4xl font-bold text-white mb-8 tracking-tight">Report a Lost Item</h1>
-        
+
         <form
           onSubmit={handleSubmit}
           className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-8 space-y-6 border border-white/20"

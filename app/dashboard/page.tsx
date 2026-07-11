@@ -14,6 +14,7 @@ import {
   updateDoc,
   Timestamp,
 } from "firebase/firestore";
+import type { Unsubscribe } from "firebase/firestore";
 import {
   notifySuccess,
   notifyError,
@@ -44,18 +45,30 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
+    let unsubscribeItems: Unsubscribe | undefined;
+
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      unsubscribeItems?.();
+      unsubscribeItems = undefined;
 
       if (currentUser) {
+        setLoading(true);
         const q = query(collection(db, "items"), where("uid", "==", currentUser.uid));
-        const unsubscribeItems = onSnapshot(q, (snapshot) => {
-          setItems(
-            snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Item[]
-          );
-          setLoading(false);
-        });
-        return () => unsubscribeItems();
+        unsubscribeItems = onSnapshot(
+          q,
+          (snapshot) => {
+            setItems(
+              snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Item[]
+            );
+            setLoading(false);
+          },
+          (error) => {
+            console.error(error);
+            notifyError("Could not load dashboard items.");
+            setLoading(false);
+          }
+        );
       } else {
         setItems([]);
         setLoading(false);
@@ -63,7 +76,10 @@ export default function DashboardPage() {
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeItems?.();
+      unsubscribeAuth();
+    };
   }, [router]);
 
   const handleDelete = async (id: string) => {
@@ -169,8 +185,12 @@ export default function DashboardPage() {
     return true;
   });
 
+  if (loading) {
+    return <p className="p-6 text-slate-700 font-semibold">Loading your dashboard...</p>;
+  }
+
   if (!user) {
-    return <p className="p-6 text-(--color-secondary) font-semibold">Please log in to view your dashboard.</p>;
+    return <p className="p-6 text-(--color-secondary) font-semibold">Redirecting to login...</p>;
   }
 
   return (
@@ -210,7 +230,7 @@ export default function DashboardPage() {
                 placeholder="Search items..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full border border-slate-200 bg-white py-3 px-4 rounded-2xl shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 shadow-sm placeholder:text-slate-500 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
             <div className="flex gap-3 flex-col sm:flex-row items-stretch sm:items-center">
@@ -240,133 +260,129 @@ export default function DashboardPage() {
         </div>
 
         {loading ? (
-          <p className="text-slate-700">Loading your items...</p>
-        ) : filteredItems.length === 0 ? (
-          <div className="rounded-3xl bg-white p-8 shadow-xl shadow-slate-200/70">
-            <p className="text-slate-700">
-              No items match your search/filter.
-              <a href="/report" className="text-blue-900 font-semibold hover:underline">
-                Report one now
-              </a>.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-6 xl:grid-cols-2">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/70 border border-slate-200 transition hover:-translate-y-1 hover:shadow-2xl"
-              >
-                {item.imageUrl && (
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.name}
-                    width={640}
-                    height={320}
-                    className="w-full h-48 object-cover rounded-3xl mb-5"
-                    unoptimized
-                  />
-                )}
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-slate-900">{item.name}</h2>
-                    <p className="mt-2 text-slate-600">{item.description}</p>
-                  </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      item.claimed
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-sky-100 text-sky-800"
-                    }`}
-                  >
-                    {item.claimed ? "Claimed" : "Open"}
-                  </span>
-                </div>
-                <div className="mt-5 space-y-2 text-sm text-slate-600">
-                  <p>Contact: {item.contact}</p>
-                  {item.createdAt && (
-                    <p>Reported: {item.createdAt.toDate().toLocaleDateString()}</p>
-                  )}
-                  {item.claimedAt && (
-                    <p>Claimed: {item.claimedAt.toDate().toLocaleDateString()}</p>
-                  )}
-                </div>
-
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {!item.claimed && (
-                    <>
-                      <button
-                        onClick={() => startEdit(item.id, item.name)}
-                        className="rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                  {editingItemId === item.id ? (
-                    <div className="mt-4 w-full space-y-3">
-                      <input
-                        type="text"
-                        value={editingName}
-                        onChange={(event) => setEditingName(event.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        placeholder="Update item name"
+            <p className="text-slate-700">Loading your items...</p>
+          ) : filteredItems.length === 0 ? (
+            <div className="rounded-3xl bg-white p-8 shadow-xl shadow-slate-200/70">
+              <p className="text-slate-700">
+                No items match your search/filter.
+                <a href="/report" className="text-blue-900 font-semibold hover:underline">
+                  Report one now
+                </a>.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-6 xl:grid-cols-2">
+              {filteredItems.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/70 border border-slate-200 transition hover:-translate-y-1 hover:shadow-2xl"
+                >
+                  {item.imageUrl ? (
+                    <div className="flex justify-center items-center bg-slate-50 rounded-3xl mb-5">
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        width={640}
+                        height={400}
+                        className="object-contain w-full h-auto max-h-80 rounded-3xl"
+                        unoptimized
+                        loading={index === 0 ? "eager" : "lazy"}
                       />
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          onClick={() => saveEdit(item.id)}
-                          className="rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="rounded-full bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-400"
-                        >
-                          Cancel
-                        </button>
-                      </div>
                     </div>
                   ) : (
-                    <>
-                      {!item.claimed && (
-                        <>
+                    <div className="w-full max-h-80 flex items-center justify-center bg-slate-100 text-slate-400 rounded-3xl mb-5">
+                      No image uploaded
+                    </div>
+                  )}
+
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-2xl font-semibold text-slate-900">{item.name}</h2>
+                      <p className="mt-2 text-slate-600">{item.description}</p>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        item.claimed
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-sky-100 text-sky-800"
+                      }`}
+                    >
+                      {item.claimed ? "Claimed" : "Open"}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 space-y-2 text-sm text-slate-600">
+                    <p>Contact: {item.contact}</p>
+                    {item.createdAt && (
+                      <p>Reported: {item.createdAt.toDate().toLocaleDateString()}</p>
+                    )}
+                    {item.claimedAt && (
+                      <p>Claimed: {item.claimedAt.toDate().toLocaleDateString()}</p>
+                    )}
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    {editingItemId === item.id ? (
+                      <div className="mt-4 w-full space-y-3">
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(event) => setEditingName(event.target.value)}
+                          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          placeholder="Update item name"
+                        />
+                        <div className="flex flex-wrap gap-3">
                           <button
-                            onClick={() => startEdit(item.id, item.name)}
+                            onClick={() => saveEdit(item.id)}
                             className="rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
                           >
-                            Edit
+                            Save
                           </button>
                           <button
-                            onClick={() => handleDelete(item.id)}
-                            className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
+                            onClick={cancelEdit}
+                            className="rounded-full bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-400"
                           >
-                            Delete
+                            Cancel
                           </button>
-                        </>
-                      )}
-                      {!item.claimed ? (
-                        <button
-                          onClick={() => requestClaim(item)}
-                          className="rounded-full bg-yellow-400 px-4 py-2 text-sm font-semibold text-blue-950 shadow-sm hover:bg-yellow-300"
-                          disabled={claimingItemId === item.id}
-                        >
-                          {claimingItemId === item.id ? "Claiming..." : "Claim Item"}
-                        </button>
-                      ) : null}
-                    </>
-                  )}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {!item.claimed && (
+                          <>
+                            <button
+                              onClick={() => startEdit(item.id, item.name)}
+                              className="rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                        {!item.claimed && (
+                          <button
+                            onClick={() => requestClaim(item)}
+                            className="rounded-full bg-yellow-400 px-4 py-2 text-sm font-semibold text-blue-950 shadow-sm hover:bg-yellow-300"
+                            disabled={claimingItemId === item.id}
+                          >
+                            {claimingItemId === item.id ? "Claiming..." : "Claim Item"}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+
+
+
       </div>
 
       {confirmClaimItem ? (

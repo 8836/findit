@@ -1,6 +1,7 @@
 ﻿"use client";
 import { useState } from "react";
-import { auth, getFirebaseAuthErrorMessage } from "../../lib/firebase";
+import Image from "next/image";
+import { auth, ensureAuthPersistence, getFirebaseAuthErrorMessage } from "../../lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import {
@@ -12,31 +13,48 @@ import {
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+
+    const normalizedEmail = email.trim().toLowerCase();
     const toastId = notifyLoading("Logging in...");
+    setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await ensureAuthPersistence();
+      await signInWithEmailAndPassword(auth, normalizedEmail, password);
       notifySuccess("Logged in successfully!", toastId);
-      router.push("/dashboard");
+      router.replace("/dashboard");
+      router.refresh();
     } catch (error) {
+      console.error("Login failed:", error);
       notifyError(getFirebaseAuthErrorMessage(error), toastId);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
         <form
           onSubmit={handleLogin}
-          className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-8 space-y-6 border border-white/20"
+          className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-10 space-y-7 border border-white/20"
         >
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white tracking-tight">FindIt</h1>
-            <p className="mt-2 text-sky-100 font-medium">Welcome back</p>
+          <div className="text-center mb-10">
+            <Image
+              src="/findit-logo-transparent.png"
+              alt="FindIt"
+              width={520}
+              height={300}
+              priority
+              className="mx-auto h-auto w-full max-w-sm"
+            />
+            <p className="mt-4 text-xl font-semibold text-sky-100">Welcome back</p>
           </div>
 
           <div>
@@ -69,9 +87,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full rounded-full bg-yellow-400 hover:bg-yellow-300 px-6 py-3 text-sm font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
+            disabled={loading}
+            className="w-full rounded-full bg-yellow-400 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 px-6 py-4 text-base font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
           >
-            Sign In
+            {loading ? "Signing in..." : "Sign In"}
           </button>
 
           <div className="relative py-2">
@@ -84,7 +103,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-sm text-white/70 text-center">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <a href="/signup" className="font-bold text-yellow-300 hover:text-yellow-100">
               Sign up
             </a>

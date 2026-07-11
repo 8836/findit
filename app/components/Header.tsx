@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "../../lib/firebase";
@@ -23,7 +24,16 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-gray-800 text-white p-4 flex gap-6">
+    <header className="bg-gray-800 text-white p-5 flex items-center gap-7 text-base font-semibold">
+      <Link href="/" className="flex items-center">
+        <Image
+          src="/findit-logo-transparent.png"
+          alt="FindIt"
+          width={112}
+          height={64}
+          className="h-16 w-auto"
+        />
+      </Link>
       <Link href="/">Home</Link>
       <Link href="/registry">Registry</Link>
       <Link href="/report">Report</Link>

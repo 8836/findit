@@ -1,5 +1,6 @@
 // Shared bot service for bot workflows.
-import { collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import axios from 'axios';
+import { collection, addDoc, query, where, getDocs, getDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
 export interface BotUser {
@@ -15,29 +16,83 @@ export interface BotCommand {
   timestamp: Date;
 }
 
+interface RegistrySearchItem {
+  id: string;
+  name?: string;
+  description?: string;
+}
+
 export class BotService {
   private static userSessions: Map<string, BotUser> = new Map();
+
+// 🔹 Claim notification helper (Telegram)
+private static async notifyReporter(contact: string, message: string) {
+  try {
+    await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      chat_id: contact, // Telegram user ID (numeric chat_id, not phone number)
+      text: message,
+    });
+  } catch (error) {
+    console.error('Failed to notify reporter:', error);
+  }
+}
+
+
 
   /**
    * Initialize or get a bot user session
    */
-  static async initializeUser(phoneNumber: string, platform: 'whatsapp' | 'telegram'): Promise<BotUser> {
-    const key = `${platform}:${phoneNumber}`;
-    
-    if (this.userSessions.has(key)) {
-      return this.userSessions.get(key)!;
-    }
+/**
+ * Initialize or get a bot user session
+ */
+static async initializeUser(
+  phoneNumber: string,
+  platform: 'whatsapp' | 'telegram',
+  chatId?: string // 🔹 new optional param
+): Promise<BotUser> {
+  const key = `${platform}:${phoneNumber}`;
 
-    const user: BotUser = {
-      phoneNumber,
-      platform,
-      conversationState: 'idle',
-      sessionData: {},
-    };
-
-    this.userSessions.set(key, user);
-    return user;
+  if (this.userSessions.has(key)) {
+    return this.userSessions.get(key)!;
   }
+
+  const user: BotUser = {
+    phoneNumber,
+    platform,
+    conversationState: 'idle',
+    sessionData: { chatId: chatId || '' }, // 🔹 store chatId
+  };
+
+  this.userSessions.set(key, user);
+
+  // 🔹 persist chatId in Firestore
+  if (chatId) {
+    await updateDoc(doc(db, 'users', key), { chatId });
+  }
+
+  return user;
+}
+
+
+// 🔹 Cloudinary upload helper
+private static async uploadToCloudinary(mediaUrl: string): Promise<string | null> {
+  try {
+    const formData = new FormData();
+    formData.append('file', mediaUrl);
+    formData.append('upload_preset', process.env.CLOUDINARY_UPLOAD_PRESET!);
+
+    const res = await axios.post(
+      `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`,
+      formData
+    );
+
+    return res.data.secure_url;
+  } catch (error) {
+    console.error('Cloudinary upload failed:', error);
+    return null;
+  }
+}
+
 
   /**
    * Parse incoming command message
@@ -154,78 +209,65 @@ export class BotService {
   /**
    * Handle report lost item workflow
    */
-  static async handleReportLost(
-    phoneNumber: string,
-    platform: 'whatsapp' | 'telegram',
-    itemData: { name: string; description: string; contact?: string; imageUrl?: string }
-  ) {
-    try {
-      const itemsCollection = collection(db, 'items');
-      const docRef = await addDoc(itemsCollection, {
-        uid: `${platform}:${phoneNumber}`,
-        name: itemData.name,
-        description: itemData.description,
-        contact: itemData.contact || phoneNumber,
-        imageUrl: itemData.imageUrl || null,
-        createdAt: serverTimestamp(),
-        claimed: false,
-        source: 'bot',
-        platform,
-        type: 'lost',
-      });
-
-      return {
-        success: true,
-        itemId: docRef.id,
-        message: `✅ Lost item reported! ID: ${docRef.id}`,
-      };
-    } catch (error) {
-      console.error('Error reporting lost item:', error);
-      return {
-        success: false,
-        message: '❌ Failed to report item. Please try again.',
-        error,
-      };
+static async handleReportLost(phoneNumber: string, platform: 'whatsapp' | 'telegram', itemData: { name: string; description: string; contact?: string; imageUrl?: string }) {
+  try {
+    let finalImageUrl = itemData.imageUrl || null;
+    if (finalImageUrl) {
+      const uploaded = await this.uploadToCloudinary(finalImageUrl);
+      if (uploaded) finalImageUrl = uploaded;
     }
+
+    const docRef = await addDoc(collection(db, 'items'), {
+      uid: `${platform}:${phoneNumber}`,
+      name: itemData.name,
+      description: itemData.description,
+      contact: itemData.contact || phoneNumber,
+      imageUrl: finalImageUrl,
+      createdAt: serverTimestamp(),
+      claimed: false,
+      source: 'bot',
+      platform,
+      type: 'lost',
+    });
+
+    return { success: true, itemId: docRef.id, message: `Lost item reported. ID: ${docRef.id}` };
+  } catch (error) {
+    console.error('Error reporting lost item:', error);
+    return { success: false, message: 'Failed to report item. Please try again.', error };
   }
+}
+
 
   /**
    * Handle report found item workflow
    */
-  static async handleReportFound(
-    phoneNumber: string,
-    platform: 'whatsapp' | 'telegram',
-    itemData: { name: string; description: string; contact?: string; imageUrl?: string }
-  ) {
-    try {
-      const itemsCollection = collection(db, 'items');
-      const docRef = await addDoc(itemsCollection, {
-        uid: `${platform}:${phoneNumber}`,
-        name: itemData.name,
-        description: itemData.description,
-        contact: itemData.contact || phoneNumber,
-        imageUrl: itemData.imageUrl || null,
-        createdAt: serverTimestamp(),
-        claimed: false,
-        source: 'bot',
-        platform,
-        type: 'found', // Mark as found item
-      });
-
-      return {
-        success: true,
-        itemId: docRef.id,
-        message: `✅ Found item registered! ID: ${docRef.id}`,
-      };
-    } catch (error) {
-      console.error('Error reporting found item:', error);
-      return {
-        success: false,
-        message: '❌ Failed to register found item. Please try again.',
-        error,
-      };
+static async handleReportFound(phoneNumber: string, platform: 'whatsapp' | 'telegram', itemData: { name: string; description: string; contact?: string; imageUrl?: string }) {
+  try {
+    let finalImageUrl = itemData.imageUrl || null;
+    if (finalImageUrl) {
+      const uploaded = await this.uploadToCloudinary(finalImageUrl);
+      if (uploaded) finalImageUrl = uploaded;
     }
+
+    const docRef = await addDoc(collection(db, 'items'), {
+      uid: `${platform}:${phoneNumber}`,
+      name: itemData.name,
+      description: itemData.description,
+      contact: itemData.contact || phoneNumber,
+      imageUrl: finalImageUrl,
+      createdAt: serverTimestamp(),
+      claimed: false,
+      source: 'bot',
+      platform,
+      type: 'found',
+    });
+
+    return { success: true, itemId: docRef.id, message: `Found item registered. ID: ${docRef.id}` };
+  } catch (error) {
+    console.error('Error reporting found item:', error);
+    return { success: false, message: 'Failed to register found item. Please try again.', error };
   }
+}
 
   /**
    * Search items by name or description
@@ -237,11 +279,11 @@ export class BotService {
       const querySnapshot = await getDocs(q);
 
       const searchLower = searchTerm.toLowerCase();
-      const results = querySnapshot.docs
+      const results: RegistrySearchItem[] = querySnapshot.docs
         .map(doc => ({
           id: doc.id,
           ...doc.data(),
-        }))
+        }) as RegistrySearchItem)
         .filter(item => 
           item.name?.toLowerCase().includes(searchLower) ||
           item.description?.toLowerCase().includes(searchLower)
@@ -252,7 +294,7 @@ export class BotService {
         return {
           success: true,
           found: false,
-          message: `🔍 No items found matching "${searchTerm}"`,
+          message: `No items found matching "${searchTerm}"`,
         };
       }
 
@@ -265,13 +307,13 @@ export class BotService {
         found: true,
         count: results.length,
         items: results,
-        message: `🔍 Found ${results.length} item(s):\n\n${formattedResults}`,
+        message: `Found ${results.length} item(s):\n\n${formattedResults}`,
       };
     } catch (error) {
       console.error('Error searching registry:', error);
       return {
         success: false,
-        message: '❌ Error searching registry. Please try again.',
+        message: 'Error searching registry. Please try again.',
         error,
       };
     }
@@ -280,64 +322,37 @@ export class BotService {
   /**
    * Claim an item by ID
    */
-  static async claimItem(
-    itemId: string,
-    phoneNumber: string,
-    platform: 'whatsapp' | 'telegram'
-  ) {
-    try {
-      const itemRef = doc(db, 'items', itemId);
-      const itemDoc = await getDocs(query(collection(db, 'items'), where('__name__', '==', itemId)));
-      
-      if (itemDoc.empty) {
-        return {
-          success: false,
-          message: 'Item not found. Check the ID and try again.',
-        };
-      }
+static async claimItem(itemId: string, phoneNumber: string, platform: 'whatsapp' | 'telegram') {
+  try {
+    const itemRef = doc(db, 'items', itemId);
+    const itemDoc = await getDoc(itemRef);
 
-      if (itemDoc.empty) {
-        return {
-          success: false,
-          message: '❌ Item not found.',
-        };
-      }
-
-      const itemData = itemDoc.docs[0].data();
-      
-      if (itemData.claimed) {
-        return {
-          success: false,
-          message: 'This item has already been claimed.',
-        };
-      }
-
-      if (itemData.claimed) {
-        return {
-          success: false,
-          message: '❌ This item has already been claimed.',
-        };
-      }
-
-      await updateDoc(itemRef, {
-        claimed: true,
-        claimedAt: serverTimestamp(),
-        claimedBy: `${platform}:${phoneNumber}`,
-      });
-
-      return {
-        success: true,
-        message: `✅ Item claimed! The reporter will be notified at ${itemData.contact}`,
-      };
-    } catch (error) {
-      console.error('Error claiming item:', error);
-      return {
-        success: false,
-        message: '❌ Failed to claim item. Please try again.',
-        error,
-      };
+    if (!itemDoc.exists()) {
+      return { success: false, message: 'Item not found. Check the ID and try again.' };
     }
+
+    const itemData = itemDoc.data();
+    if (itemData.claimed) {
+      return { success: false, message: 'This item has already been claimed.' };
+    }
+
+    await updateDoc(itemRef, {
+      claimed: true,
+      claimedAt: serverTimestamp(),
+      claimedBy: `${platform}:${phoneNumber}`,
+    });
+
+    // 🔹 Notify reporter
+    if (itemData.contact) {
+      await this.notifyReporter(itemData.contact, `Your item "${itemData.name}" has been claimed.`);
+    }
+
+    return { success: true, message: `Item claimed. The reporter will be notified at ${itemData.contact}` };
+  } catch (error) {
+    console.error('Error claiming item:', error);
+    return { success: false, message: 'Failed to claim item. Please try again.', error };
   }
+}
 
   static async createSupportTicket(
     phoneNumber: string,
@@ -485,11 +500,11 @@ export class BotService {
    * Get welcome message
    */
   static getWelcomeMessage(): string {
-    return `👋 Welcome to FindIt!\n\nI'm your lost and found assistant. I can help you:\n\n` +
-           `📝 Report lost items\n` +
-           `📦 Report found items\n` +
-           `🔍 Search our registry\n` +
-           `✅ Claim items you've found\n\n` +
+    return `Welcome to FindIt!\n\nI'm your lost and found assistant. I can help you:\n\n` +
+           `Report lost items\n` +
+           `Report found items\n` +
+           `Search our registry\n` +
+           `Claim items you've found\n\n` +
            `Type /help to see all commands!`;
   }
 

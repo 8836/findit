@@ -14,7 +14,7 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        router.push("/dashboard"); // ✅ auto‑redirect if logged in
+        router.push("/dashboard");
       } else {
         setUser(null);
       }
@@ -31,27 +31,27 @@ export default function Home() {
     );
   }
 
-  // ❌ Not logged in → show login/signup options
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
-      <h1 className="text-4xl font-bold mb-6">Welcome to FindIt</h1>
+    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-6 py-12">
       <Image
-        src="/vercel.svg"
+        src="/findit-logo-transparent.png"
         alt="FindIt Logo"
-        width={200}
-        height={40}
-        className="h-auto"
+        width={920}
+        height={520}
+        priority
+        className="h-auto w-full max-w-3xl"
       />
-      <div className="space-x-4 mt-6">
+      <h1 className="mt-10 text-center text-5xl font-bold text-blue-950 md:text-6xl">Welcome to FindIt</h1>
+      <div className="mt-8 flex gap-5">
         <Link
           href="/login"
-          className="px-4 py-2 bg-green-600 text-white rounded"
+          className="rounded-full bg-green-700 px-8 py-4 text-lg font-semibold text-white shadow-sm hover:bg-green-600"
         >
           Login
         </Link>
         <Link
           href="/signup"
-          className="px-4 py-2 bg-blue-600 text-white rounded"
+          className="rounded-full bg-blue-900 px-8 py-4 text-lg font-semibold text-white shadow-sm hover:bg-blue-800"
         >
           Sign Up
         </Link>

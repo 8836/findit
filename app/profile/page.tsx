@@ -226,7 +226,7 @@ export default function ProfilePage() {
             <p className="text-sky-100 font-medium">Loading items...</p>
           ) : items.length === 0 ? (
             <p className="text-sky-100">
-              You haven't reported any items yet. Start by reporting one now.
+              You haven&apos;t reported any items yet. Start by reporting one now.
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
