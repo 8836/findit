@@ -71,6 +71,21 @@ cp .env.example .env.local
 
 Every value is documented in [`.env.example`](./.env.example).
 
+> The original `findit` repository never committed its `.env*` files (they are
+> gitignored), so a fresh clone cannot contain the real API keys / tokens.
+> The recoverable, real public identifiers that ARE in the repository are:
+>
+> - Firebase project ID: `findit-dac3b` (in `.firebaserc`)
+> - Public deploy origin: `https://findit-amber.vercel.app` (was hardcoded in
+>   the original bot route)
+> - Telegram bot username intent: `findit_bot`
+>
+> Wire the remaining secret values from your own Firebase / Cloudinary /
+> Telegram / Twilio / Signal / email accounts into `.env.local`. Run
+> `GET /api/health` after starting the server to see exactly which services are
+> configured and which values are still missing (only public identifiers are
+> shown; secrets are never returned).
+
 > `lib/firebase.ts` fails fast with a clear message if the Firebase web
 > configuration is missing or still placeholder-filled, so the app never runs
 > silently against bad credentials.

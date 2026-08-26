@@ -1,12 +1,13 @@
 // Firebase (web SDK) initialization.
 //
-// If the required environment variables are missing, this module falls back to
-// a non-functional demo configuration so the UI can still render and you get a
-// clear warning instead of a hard crash. Replace the NEXT_PUBLIC_FIREBASE_*
-// values in `.env.local` to make authentication and Firestore work.
+// The web SDK config is public; it points the browser at your Firebase project.
+// If the required NEXT_PUBLIC_FIREBASE_* values are missing, this module falls
+// back to a non-functional demo configuration so the UI can still render and
+// you get a clear, actionable warning instead of a hard crash.
 import { FirebaseError, getApps, initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { browserLocalPersistence, getAuth, setPersistence } from "firebase/auth";
+import { getConfigStatus } from "./config";
 
 const demoConfig = {
   apiKey: "demo-api-key",
@@ -28,30 +29,19 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || undefined,
 };
 
-const requiredKeys = [
-  "apiKey",
-  "authDomain",
-  "projectId",
-  "storageBucket",
-  "messagingSenderId",
-  "appId",
-] as const;
-
-const isMissingConfig = requiredKeys.some(
-  (key) => !firebaseConfig[key]
-);
-
-const isPlaceholderConfig = Object.entries(firebaseConfig).some(
-  ([, value]) => typeof value === "string" && /your_|your\.|your-/i.test(value)
-);
-
-const isFirebaseConfigured = !isMissingConfig && !isPlaceholderConfig;
+const status = getConfigStatus();
+const isFirebaseConfigured = status.firebase.configured;
 
 if (!isFirebaseConfigured) {
+  const detail =
+    status.firebase.projectId && status.firebase.missing.length > 0
+      ? `Firebase project "${status.firebase.projectId}" is needed, but these values are still missing: ${status.firebase.missing.join(", ")}.`
+      : `Add the NEXT_PUBLIC_FIREBASE_* values from your Firebase project to \`.env.local\`.`;
+
   console.warn(
-    "FindIt: Firebase configuration is missing or placeholder-filled. " +
-      "Using a demo configuration so the UI can render. Add the NEXT_PUBLIC_FIREBASE_* " +
-      "values from your Firebase project to `.env.local`."
+    "FindIt: Firebase configuration is incomplete. " +
+      "Using a demo configuration so the UI can render. " +
+      detail
   );
 }
 
