@@ -177,14 +177,18 @@ Firebase project (Functions → Runtime settings → Environment variables).
 
 ## 🛠 Available scripts
 
-| Command             | Description                              |
-| ------------------- | ---------------------------------------- |
-| `npm run dev`       | Start the Next.js dev server             |
-| `npm run build`     | Create a production build                |
-| `npm run start`     | Start the production server              |
-| `npm run lint`      | Run ESLint                               |
-| `npm run typecheck` | Run the TypeScript type checker          |
-| `npm run check`     | Run lint + typecheck                     |
+| Command              | Description                               |
+| -------------------- | ----------------------------------------- |
+| `npm run dev`        | Start the Next.js dev server              |
+| `npm run build`      | Create a production build                 |
+| `npm run start`      | Start the production server               |
+| `npm run lint`       | Run ESLint                                |
+| `npm run typecheck`  | Run the TypeScript type checker           |
+| `npm run test`       | Run the unit/integration tests            |
+| `npm run test:watch` | Run tests in watch mode                   |
+| `npm run test:coverage` | Run tests with coverage report        |
+| `npm run check`      | Run lint + typecheck                      |
+| `npm run ci`         | Run lint + typecheck + tests              |
 
 ---
 
