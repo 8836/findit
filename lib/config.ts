@@ -80,7 +80,7 @@ export function getConfigStatus(): ConfigStatus {
       measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || null,
       configured,
       partial:
-        Boolean(firebaseKeys.projectId) && (missing.length > 0 || missing.length < requiredKeys.length),
+        !configured && missing.length > 0 && missing.length < requiredKeys.length,
       missing,
     },
     cloudinary: {
