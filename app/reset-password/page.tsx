@@ -1,9 +1,14 @@
-﻿"use client";
+"use client";
+
 import { useState } from "react";
-import Image from "next/image";
-import { auth, getFirebaseAuthErrorMessage } from "../../lib/firebase";
+import Link from "next/link";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { notifySuccess, notifyError, notifyLoading } from "../../lib/notify";
+import { auth, getFirebaseAuthErrorMessage } from "@/lib/firebase";
+import { notifyError, notifyLoading, notifySuccess } from "@/lib/notify";
+import { AuthCard } from "@/app/components/AuthCard";
+import { Button } from "@/app/components/ui/Button";
+import { TextField } from "@/app/components/ui/Field";
+import { MailCheck } from "lucide-react";
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
@@ -33,20 +38,20 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
-          <div className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-8 text-center space-y-6 border border-white/20">
-            <div className="text-5xl">✓</div>
-            <h1 className="text-3xl font-bold text-white">Email Sent!</h1>
-            <p className="text-sky-100 font-medium">
-              Check your inbox for a password reset link. Follow the instructions to set a new password.
-            </p>
-            <a
-              href="/login"
-              className="inline-block w-full rounded-full bg-yellow-400 hover:bg-yellow-300 px-6 py-3 text-sm font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
-            >
-              Back to Login
-            </a>
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gradient-to-br from-blue-950 via-blue-900 to-sky-800 px-4 py-12">
+        <div className="glass w-full max-w-md rounded-[1.75rem] p-8 text-center text-white shadow-2xl shadow-blue-950/40">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/20 text-emerald-200">
+            <MailCheck className="h-8 w-8" aria-hidden />
+          </div>
+          <h1 className="mt-6 text-3xl font-bold">Check your inbox</h1>
+          <p className="mt-3 text-sm text-sky-100/80">
+            We sent a password reset link to <span className="font-semibold text-white">{email}</span>.
+            Follow the instructions to set a new password.
+          </p>
+          <div className="mt-8">
+            <Link href="/login" className="text-sm font-semibold text-amber-300 hover:text-amber-200">
+              Back to login
+            </Link>
           </div>
         </div>
       </div>
@@ -54,68 +59,33 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 flex items-center justify-center p-6">
-      <div className="w-full max-w-lg">
-        <form
-          onSubmit={handleReset}
-          className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-10 space-y-7 border border-white/20"
-        >
-          <div className="text-center mb-10">
-            <Image
-              src="/findit-logo-transparent.png"
-              alt="FindIt"
-              width={520}
-              height={300}
-              priority
-              className="mx-auto h-auto w-full max-w-sm"
-            />
-            <p className="mt-4 text-xl font-semibold text-sky-100">Reset your password</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-white mb-3 uppercase tracking-[0.1em]">
-              Email address
-            </label>
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full bg-yellow-400 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 px-6 py-4 text-base font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
-          >
-            {loading ? "Sending..." : "Send Reset Link"}
-          </button>
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/20"></div>
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-white/5 text-white/60">or</span>
-            </div>
-          </div>
-
-          <p className="text-sm text-white/70 text-center">
-            <a href="/login" className="font-bold text-cyan-300 hover:text-cyan-100">
-              Back to Login
-            </a>
-          </p>
-          <p className="text-sm text-white/70 text-center">
-            Don&apos;t have an account?{" "}
-            <a href="/signup" className="font-bold text-yellow-300 hover:text-yellow-100">
-              Sign up
-            </a>
-          </p>
-        </form>
-      </div>
-    </div>
+    <AuthCard
+      title="Reset your password"
+      subtitle="Enter your email and we'll send you a secure reset link."
+      afterCard={
+        <p className="mt-5 text-center text-sm text-white/70">
+          Remembered it?{" "}
+          <a href="/login" className="font-semibold text-cyan-300 hover:text-cyan-100">
+            Back to login
+          </a>
+        </p>
+      }
+    >
+      <form onSubmit={handleReset} className="space-y-5">
+        <TextField
+          id="email"
+          label="Email address"
+          type="email"
+          placeholder="your@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+        <Button type="submit" variant="accent" fullWidth size="lg" loading={loading}>
+          {loading ? "Sending..." : "Send reset link"}
+        </Button>
+      </form>
+    </AuthCard>
   );
 }

@@ -1,36 +1,43 @@
 "use client";
+
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db } from "../../lib/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, type User } from "firebase/auth";
 import {
   collection,
-  query,
-  where,
-  onSnapshot,
   deleteDoc,
   doc,
-  updateDoc,
+  onSnapshot,
+  query,
   Timestamp,
+  updateDoc,
+  where,
+  type Unsubscribe,
 } from "firebase/firestore";
-import type { Unsubscribe } from "firebase/firestore";
 import {
-  notifySuccess,
-  notifyError,
-  notifyLoading,
-} from "../../lib/notify";
+  Check,
+  CheckCircle2,
+  CircleDashed,
+  Package,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { formatDate, isThisWeek, isToday, normalizeItem, type Item } from "@/lib/items";
+import { notifyError, notifyLoading, notifySuccess } from "@/lib/notify";
+import { Badge } from "@/app/components/ui/Badge";
+import { Button } from "@/app/components/ui/Button";
+import { ConfirmDialog } from "@/app/components/ui/ConfirmDialog";
+import { EmptyState } from "@/app/components/ui/EmptyState";
+import { Spinner } from "@/app/components/ui/Spinner";
+import { StatCard } from "@/app/components/ui/StatCard";
 
-interface Item {
-  id: string;
-  name: string;
-  description: string;
-  contact: string;
-  imageUrl?: string;
-  createdAt?: Timestamp;
-  claimed?: boolean;
-  claimedAt?: Timestamp;
-}
+type DateFilter = "all" | "today" | "week";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -41,7 +48,7 @@ export default function DashboardPage() {
   const [claimingItemId, setClaimingItemId] = useState<string | null>(null);
   const [confirmClaimItem, setConfirmClaimItem] = useState<Item | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterByDate, setFilterByDate] = useState("all");
+  const [filterByDate, setFilterByDate] = useState<DateFilter>("all");
   const router = useRouter();
 
   useEffect(() => {
@@ -52,28 +59,27 @@ export default function DashboardPage() {
       unsubscribeItems?.();
       unsubscribeItems = undefined;
 
-      if (currentUser) {
-        setLoading(true);
-        const q = query(collection(db, "items"), where("uid", "==", currentUser.uid));
-        unsubscribeItems = onSnapshot(
-          q,
-          (snapshot) => {
-            setItems(
-              snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Item[]
-            );
-            setLoading(false);
-          },
-          (error) => {
-            console.error(error);
-            notifyError("Could not load dashboard items.");
-            setLoading(false);
-          }
-        );
-      } else {
+      if (!currentUser) {
         setItems([]);
         setLoading(false);
-        router.push("/login");
+        router.replace("/login");
+        return;
       }
+
+      setLoading(true);
+      const q = query(collection(db, "items"), where("uid", "==", currentUser.uid));
+      unsubscribeItems = onSnapshot(
+        q,
+        (snapshot) => {
+          setItems(snapshot.docs.map((snap) => normalizeItem(snap.id, snap.data())));
+          setLoading(false);
+        },
+        (error) => {
+          console.error(error);
+          notifyError("Could not load your dashboard items.");
+          setLoading(false);
+        }
+      );
     });
 
     return () => {
@@ -86,16 +92,16 @@ export default function DashboardPage() {
     const toastId = notifyLoading("Deleting item...");
     try {
       await deleteDoc(doc(db, "items", id));
-      notifySuccess("Item deleted successfully!", toastId);
-    } catch (err) {
-      console.error(err);
-      notifyError("Error deleting item.", toastId);
+      notifySuccess("Item deleted.", toastId);
+    } catch (error) {
+      console.error(error);
+      notifyError("Could not delete item.", toastId);
     }
   };
 
-  const startEdit = (id: string, currentName: string) => {
-    setEditingItemId(id);
-    setEditingName(currentName);
+  const startEdit = (item: Item) => {
+    setEditingItemId(item.id);
+    setEditingName(item.name);
   };
 
   const cancelEdit = () => {
@@ -113,37 +119,29 @@ export default function DashboardPage() {
     const toastId = notifyLoading("Updating item...");
     try {
       await updateDoc(doc(db, "items", id), { name: trimmedName });
-      notifySuccess("Item updated successfully!", toastId);
-      setEditingItemId(null);
-      setEditingName("");
-    } catch (err) {
-      console.error(err);
-      notifyError("Error updating item.", toastId);
+      notifySuccess("Item updated.", toastId);
+      cancelEdit();
+    } catch (error) {
+      console.error(error);
+      notifyError("Could not update item.", toastId);
     }
-  };
-
-  const requestClaim = (item: Item) => {
-    setConfirmClaimItem(item);
-  };
-
-  const cancelClaim = () => {
-    setConfirmClaimItem(null);
   };
 
   const handleClaim = async () => {
     if (!confirmClaimItem) return;
     setClaimingItemId(confirmClaimItem.id);
-    const toastId = notifyLoading("Claiming item...");
+    const toastId = notifyLoading("Marking item as claimed...");
+
     try {
       await updateDoc(doc(db, "items", confirmClaimItem.id), {
         claimed: true,
         claimedAt: Timestamp.now(),
       });
-      notifySuccess("Item marked as claimed!", toastId);
+      notifySuccess("Item marked as claimed.", toastId);
       setConfirmClaimItem(null);
-    } catch (err) {
-      console.error(err);
-      notifyError("Error claiming item.", toastId);
+    } catch (error) {
+      console.error(error);
+      notifyError("Could not claim item.", toastId);
     } finally {
       setClaimingItemId(null);
     }
@@ -157,260 +155,239 @@ export default function DashboardPage() {
       item.description.toLowerCase().includes(normalizedTerm) ||
       item.contact.toLowerCase().includes(normalizedTerm);
 
-    if (!matchesSearch) {
-      return false;
-    }
-
-    if (filterByDate === "all") {
-      return true;
-    }
-
-    if (!item.createdAt) {
-      return false;
-    }
-
-    const itemDate = item.createdAt.toDate();
-    const today = new Date();
-
-    if (filterByDate === "today") {
-      return itemDate.toDateString() === today.toDateString();
-    }
-
-    if (filterByDate === "week") {
-      const weekAgo = new Date();
-      weekAgo.setDate(today.getDate() - 7);
-      return itemDate >= weekAgo;
-    }
-
-    return true;
+    if (!matchesSearch) return false;
+    if (filterByDate === "all") return true;
+    if (filterByDate === "today") return isToday(item.createdAt);
+    return isThisWeek(item.createdAt);
   });
 
+  const claimedCount = items.filter((item) => item.claimed).length;
+
   if (loading) {
-    return <p className="p-6 text-slate-700 font-semibold">Loading your dashboard...</p>;
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Spinner label="Loading your dashboard..." />
+      </div>
+    );
   }
 
   if (!user) {
-    return <p className="p-6 text-(--color-secondary) font-semibold">Redirecting to login...</p>;
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center px-4">
+        <CardLoginRequired />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
-      <div className="max-w-8xl mx-auto space-y-6">
-        <div className="rounded-4xl bg-blue-950/95 p-8 shadow-2xl shadow-blue-900/10 text-white">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-sky-200 font-medium">Dashboard</p>
-              <h1 className="text-4xl font-bold tracking-tight">My Reported Items</h1>
-              <p className="mt-2 max-w-2xl text-sky-100">
-                Manage your reports, claim statuses, and actions from a clean dashboard with fast search and filters.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-              <div className="rounded-3xl bg-white/10 border border-white/15 p-4">
-                <p className="text-sm uppercase tracking-[0.24em] text-sky-200 font-medium">Total items</p>
-                <p className="mt-3 text-3xl font-semibold">{items.length}</p>
-              </div>
-              <div className="rounded-3xl bg-white/10 border border-white/15 p-4">
-                <p className="text-sm uppercase tracking-[0.24em] text-sky-200 font-medium">Claimed</p>
-                <p className="mt-3 text-3xl font-semibold">{items.filter((item) => item.claimed).length}</p>
-              </div>
-              <div className="rounded-3xl bg-white/10 border border-white/15 p-4">
-                <p className="text-sm uppercase tracking-[0.24em] text-sky-200 font-medium">Open</p>
-                <p className="mt-3 text-3xl font-semibold">{items.filter((item) => !item.claimed).length}</p>
-              </div>
-            </div>
-          </div>
+    <div className="page-shell py-10">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-blue-700">Dashboard</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+            My Reported Items
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-slate-600">
+            Manage your reports, claim statuses, and keep the community informed.
+          </p>
         </div>
-
-        <div className="rounded-4xl bg-white p-6 shadow-xl shadow-slate-300/40">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex-1 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-              <input
-                type="text"
-                placeholder="Search items..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 shadow-sm placeholder:text-slate-500 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-            </div>
-            <div className="flex gap-3 flex-col sm:flex-row items-stretch sm:items-center">
-              <label htmlFor="filterByDate" className="sr-only">
-                Filter by date
-              </label>
-              <select
-                id="filterByDate"
-                value={filterByDate}
-                onChange={(e) => setFilterByDate(e.target.value)}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              >
-                <option value="all">All Dates</option>
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => setSearchTerm("")}
-                disabled={!searchTerm}
-                className="rounded-2xl bg-blue-950 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/10 hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {loading ? (
-            <p className="text-slate-700">Loading your items...</p>
-          ) : filteredItems.length === 0 ? (
-            <div className="rounded-3xl bg-white p-8 shadow-xl shadow-slate-200/70">
-              <p className="text-slate-700">
-                No items match your search/filter.
-                <a href="/report" className="text-blue-900 font-semibold hover:underline">
-                  Report one now
-                </a>.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-6 xl:grid-cols-2">
-              {filteredItems.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/70 border border-slate-200 transition hover:-translate-y-1 hover:shadow-2xl"
-                >
-                  {item.imageUrl ? (
-                    <div className="flex justify-center items-center bg-slate-50 rounded-3xl mb-5">
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.name}
-                        width={640}
-                        height={400}
-                        className="object-contain w-full h-auto max-h-80 rounded-3xl"
-                        unoptimized
-                        loading={index === 0 ? "eager" : "lazy"}
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full max-h-80 flex items-center justify-center bg-slate-100 text-slate-400 rounded-3xl mb-5">
-                      No image uploaded
-                    </div>
-                  )}
-
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-2xl font-semibold text-slate-900">{item.name}</h2>
-                      <p className="mt-2 text-slate-600">{item.description}</p>
-                    </div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        item.claimed
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-sky-100 text-sky-800"
-                      }`}
-                    >
-                      {item.claimed ? "Claimed" : "Open"}
-                    </span>
-                  </div>
-
-                  <div className="mt-5 space-y-2 text-sm text-slate-600">
-                    <p>Contact: {item.contact}</p>
-                    {item.createdAt && (
-                      <p>Reported: {item.createdAt.toDate().toLocaleDateString()}</p>
-                    )}
-                    {item.claimedAt && (
-                      <p>Claimed: {item.claimedAt.toDate().toLocaleDateString()}</p>
-                    )}
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    {editingItemId === item.id ? (
-                      <div className="mt-4 w-full space-y-3">
-                        <input
-                          type="text"
-                          value={editingName}
-                          onChange={(event) => setEditingName(event.target.value)}
-                          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                          placeholder="Update item name"
-                        />
-                        <div className="flex flex-wrap gap-3">
-                          <button
-                            onClick={() => saveEdit(item.id)}
-                            className="rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="rounded-full bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-400"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {!item.claimed && (
-                          <>
-                            <button
-                              onClick={() => startEdit(item.id, item.name)}
-                              className="rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(item.id)}
-                              className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
-                            >
-                              Delete
-                            </button>
-                          </>
-                        )}
-                        {!item.claimed && (
-                          <button
-                            onClick={() => requestClaim(item)}
-                            className="rounded-full bg-yellow-400 px-4 py-2 text-sm font-semibold text-blue-950 shadow-sm hover:bg-yellow-300"
-                            disabled={claimingItemId === item.id}
-                          >
-                            {claimingItemId === item.id ? "Claiming..." : "Claim Item"}
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-
-
+        <Link href="/report">
+          <Button variant="primary" size="lg">
+            <Plus className="h-4 w-4" aria-hidden />
+            Report an item
+          </Button>
+        </Link>
       </div>
 
-      {confirmClaimItem ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-4xl bg-linear-to-br from-blue-900 via-slate-900 to-sky-700 p-8 text-white shadow-2xl shadow-slate-900/40">
-            <h2 className="text-3xl font-bold">Claim Item?</h2>
-            <p className="mt-4 text-slate-100/90">
-              Are you sure you want to mark <span className="font-semibold">{confirmClaimItem.name}</span> as claimed?
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={cancelClaim}
-                className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-white hover:bg-white/20"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleClaim}
-                className="rounded-full bg-yellow-400 px-5 py-3 text-sm font-semibold text-blue-950 shadow-lg shadow-yellow-400/30 hover:bg-yellow-300"
-              >
-                Yes, Claim Item
-              </button>
-            </div>
-          </div>
+      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <StatCard label="Total items" value={items.length} icon={Package} tone="blue" />
+        <StatCard label="Claimed" value={claimedCount} icon={CheckCircle2} tone="green" />
+        <StatCard label="Open" value={items.length - claimedCount} icon={CircleDashed} tone="amber" />
+      </div>
+
+      <div className="card mt-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search your items..."
+            className="pl-12"
+          />
         </div>
-      ) : null}
+        <select
+          value={filterByDate}
+          onChange={(e) => setFilterByDate(e.target.value as DateFilter)}
+          aria-label="Filter by date"
+          className="sm:w-48"
+        >
+          <option value="all">All dates</option>
+          <option value="today">Today</option>
+          <option value="week">This week</option>
+        </select>
+        <Button variant="secondary" onClick={() => setSearchTerm("")} disabled={!searchTerm}>
+          Clear
+        </Button>
+      </div>
+
+      {filteredItems.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            icon={searchTerm || filterByDate !== "all" ? Search : Package}
+            title={searchTerm || filterByDate !== "all" ? "No matching items" : "No reports yet"}
+            description={
+              searchTerm || filterByDate !== "all"
+                ? "Try changing your search or filters."
+                : "Report your first lost or found item to see it here."
+            }
+            action={
+              <Link href="/report">
+                <Button variant="primary">
+                  <Plus className="h-4 w-4" aria-hidden />
+                  Report an item
+                </Button>
+              </Link>
+            }
+          />
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          {filteredItems.map((item) => (
+            <article
+              key={item.id}
+              className="card overflow-hidden transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className="relative aspect-[16/10] w-full bg-slate-100">
+                {item.imageUrl ? (
+                  <Image
+                    src={item.imageUrl}
+                    alt={item.name}
+                    fill
+                    sizes="(min-width: 1024px) 50vw, 100vw"
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-slate-500">
+                    <Package className="h-12 w-12" aria-hidden />
+                  </div>
+                )}
+                <div className="absolute right-4 top-4">
+                  <Badge tone={item.claimed ? "success" : "warning"}>
+                    {item.claimed ? "Claimed" : "Open"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">{item.name}</h2>
+                    <p className="mt-1 text-sm line-clamp-2 text-slate-600">{item.description}</p>
+                  </div>
+                </div>
+
+                <dl className="mt-5 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-600">Contact</dt>
+                    <dd className="mt-0.5 truncate">{item.contact}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-600">Reported</dt>
+                    <dd className="mt-0.5">{formatDate(item.createdAt)}</dd>
+                  </div>
+                  {item.claimedAt && (
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-600">Claimed</dt>
+                      <dd className="mt-0.5">{formatDate(item.claimedAt)}</dd>
+                    </div>
+                  )}
+                </dl>
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  {editingItemId === item.id ? (
+                    <div className="w-full space-y-3">
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        placeholder="Update item name"
+                        autoFocus
+                      />
+                      <div className="flex gap-3">
+                        <Button variant="primary" size="sm" onClick={() => saveEdit(item.id)}>
+                          <Check className="h-4 w-4" aria-hidden />
+                          Save
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={cancelEdit}>
+                          <X className="h-4 w-4" aria-hidden />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {!item.claimed && (
+                        <>
+                          <Button variant="secondary" size="sm" onClick={() => startEdit(item)}>
+                            <Pencil className="h-4 w-4" aria-hidden />
+                            Edit
+                          </Button>
+                          <Button variant="danger" size="sm" onClick={() => handleDelete(item.id)}>
+                            <Trash2 className="h-4 w-4" aria-hidden />
+                            Delete
+                          </Button>
+                          <Button
+                            variant="accent"
+                            size="sm"
+                            onClick={() => setConfirmClaimItem(item)}
+                            disabled={claimingItemId === item.id}
+                          >
+                            <CheckCircle2 className="h-4 w-4" aria-hidden />
+                            {claimingItemId === item.id ? "Claiming..." : "Mark as claimed"}
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={Boolean(confirmClaimItem)}
+        title="Mark as claimed?"
+        message={
+          <>
+            You&apos;re marking <span className="font-semibold">{confirmClaimItem?.name}</span> as
+            claimed. The item will move to your claimed reports.
+          </>
+        }
+        confirmLabel="Yes, mark as claimed"
+        loading={claimingItemId === confirmClaimItem?.id}
+        onConfirm={handleClaim}
+        onCancel={() => setConfirmClaimItem(null)}
+      />
+    </div>
+  );
+}
+
+function CardLoginRequired() {
+  return (
+    <div className="card max-w-md p-8 text-center">
+      <h2 className="text-2xl font-bold text-slate-900">Sign in required</h2>
+      <p className="mt-2 text-sm text-slate-600">
+        Log in to view your reported items and dashboard.
+      </p>
+      <Link href="/login">
+        <Button variant="primary" className="mt-6">
+          Go to login
+        </Button>
+      </Link>
     </div>
   );
 }

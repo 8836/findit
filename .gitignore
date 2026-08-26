@@ -30,8 +30,17 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local db / dev-server logs
+*.log
+*.log.*
+firestore-debug.log
+firebase-debug.log
+db-debug.log
+**.eslintcache
+
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel

@@ -1,9 +1,24 @@
-// lib/firebase.ts
+// Firebase (web SDK) initialization.
+//
+// The web SDK config is public; it points the browser at your Firebase project.
+// If the required NEXT_PUBLIC_FIREBASE_* values are missing, this module falls
+// back to a non-functional demo configuration so the UI can still render and
+// you get a clear, actionable warning instead of a hard crash.
 import { FirebaseError, getApps, initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { browserLocalPersistence, getAuth, setPersistence } from "firebase/auth";
+import { getConfigStatus } from "./config";
 
-// Load your Firebase project config from environment variables.
+const demoConfig = {
+  apiKey: "demo-api-key",
+  authDomain: "demo-project.firebaseapp.com",
+  projectId: "demo-project",
+  storageBucket: "demo-project.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:0000000000000000000000",
+  measurementId: undefined,
+};
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
@@ -14,41 +29,29 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || undefined,
 };
 
-const requiredFirebaseConfig = {
-  apiKey: firebaseConfig.apiKey,
-  authDomain: firebaseConfig.authDomain,
-  projectId: firebaseConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket,
-  messagingSenderId: firebaseConfig.messagingSenderId,
-  appId: firebaseConfig.appId,
-};
+const status = getConfigStatus();
+const isFirebaseConfigured = status.firebase.configured;
 
-const missingKeys = Object.entries(requiredFirebaseConfig)
-  .filter(([, value]) => value === "" || value === undefined)
-  .map(([key]) => key);
+if (!isFirebaseConfigured) {
+  const detail =
+    status.firebase.projectId && status.firebase.missing.length > 0
+      ? `Firebase project "${status.firebase.projectId}" is needed, but these values are still missing: ${status.firebase.missing.join(", ")}.`
+      : `Add the NEXT_PUBLIC_FIREBASE_* values from your Firebase project to \`.env.local\`.`;
 
-if (missingKeys.length > 0) {
-  throw new Error(
-    `Missing Firebase config values in .env.local: ${missingKeys.join(", ")}. ` +
-      "Make sure NEXT_PUBLIC_FIREBASE_* values are defined."
+  console.warn(
+    "FindIt: Firebase configuration is incomplete. " +
+      "Using a demo configuration so the UI can render. " +
+      detail
   );
 }
 
-const placeholderKeys = Object.entries(firebaseConfig).filter(([, value]) =>
-  typeof value === "string" && /your_|your\.|your-/i.test(value)
-);
+const resolvedConfig = isFirebaseConfigured ? firebaseConfig : demoConfig;
 
-if (placeholderKeys.length > 0) {
-  throw new Error(
-    "Firebase env values in .env.local appear to be placeholders. " +
-      "Replace them with the actual values from your Firebase project settings."
-  );
-}
-
-const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
+const app = getApps().length > 0 ? getApps()[0] : initializeApp(resolvedConfig);
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export { isFirebaseConfigured };
 
 let authPersistencePromise: Promise<void> | null = null;
 
@@ -58,7 +61,10 @@ export function ensureAuthPersistence() {
   }
 
   authPersistencePromise ??= setPersistence(auth, browserLocalPersistence).catch((error: unknown) => {
-    console.warn("Could not set Firebase auth persistence. Continuing with the default persistence.", error);
+    console.warn(
+      "Could not set Firebase auth persistence. Continuing with the default persistence.",
+      error
+    );
   });
   return authPersistencePromise;
 }
