@@ -23,6 +23,7 @@ with the same data through a polished web dashboard, **WhatsApp**, and
 - **Support** — submit support tickets with priority levels from the web app.
 - **WhatsApp bot** — report, search, claim, and create support tickets.
 - **Telegram bot** — same full conversation flow plus photo support.
+- **Signal bot** — the same flow through `signal-cli-rest-api` for Signal users.
 - **Cloudinary uploads** — validated image uploads with size and type limits.
 - **Email notifications** — a Firebase Function emails the reporter when their
   item is claimed (email contacts only).
@@ -37,7 +38,7 @@ with the same data through a polished web dashboard, **WhatsApp**, and
 | Styling          | Tailwind CSS v4 + custom design tokens                       |
 | BaaS             | Firebase (Auth, Firestore, Cloud Functions)                  |
 | Image hosting    | Cloudinary                                                   |
-| Messaging        | Twilio WhatsApp, Telegram Bot API                            |
+| Messaging        | Twilio WhatsApp, Telegram Bot API, Signal via signal-cli-rest-api |
 | Notifications    | Nodemailer over Gmail (Firebase Function)                    |
 | Icons            | Lucide                                                       |
 | Lint / Types     | ESLint (Next core-web-vitals + TS) and TypeScript            |
@@ -101,6 +102,7 @@ app/
   api/
     bots/telegram/     Telegram webhook
     bots/whatsapp/     Twilio WhatsApp webhook
+    bots/signal/       Signal webhook (signal-cli-rest-api)
     upload/            Cloudinary upload endpoint
     health/            /api/health
   dashboard/           Authenticated dashboard
@@ -110,6 +112,7 @@ app/
   support/             Support ticket form
 lib/
   bot-service.ts       Shared bot conversation engine
+  signal-client.ts     Signal (signal-cli-rest-api) webhook/outbound helpers
   firebase.ts          Firebase (web SDK) initialization + auth error map
   items.ts             Item type + date helpers
   notify.ts            Toast helpers
@@ -133,6 +136,7 @@ Quick links:
 
 - Telegram webhook: `/api/bots/telegram`
 - WhatsApp webhook: `/api/bots/whatsapp`
+- Signal webhook: `/api/bots/signal`
 - Health check: `/api/health`
 
 ---

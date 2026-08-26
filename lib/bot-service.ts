@@ -1,4 +1,4 @@
-// Shared bot service used by the WhatsApp and Telegram webhooks.
+// Shared bot service used by the WhatsApp, Telegram, and Signal webhooks.
 import axios from "axios";
 import {
   addDoc,
@@ -13,10 +13,13 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { sendSignalMessage } from "./signal-client";
+
+export type BotPlatform = "whatsapp" | "telegram" | "signal";
 
 export interface BotUser {
   phoneNumber: string;
-  platform: "whatsapp" | "telegram";
+  platform: BotPlatform;
   conversationState: "idle" | "reporting_lost" | "reporting_found" | "requesting_support";
   sessionData: Record<string, string>;
 }
@@ -49,7 +52,7 @@ export class BotService {
    */
   static async initializeUser(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     chatId?: string
   ): Promise<BotUser> {
     const key = `${platform}:${phoneNumber}`;
@@ -103,7 +106,7 @@ export class BotService {
    */
   static async handleIncomingMessage(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     message: string,
     mediaUrl?: string | null
   ): Promise<string> {
@@ -170,7 +173,7 @@ export class BotService {
    */
   static async handleReportLost(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     itemData: { name: string; description: string; contact?: string; imageUrl?: string }
   ): Promise<BotResult> {
     return this.saveReport(phoneNumber, platform, "lost", itemData);
@@ -181,7 +184,7 @@ export class BotService {
    */
   static async handleReportFound(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     itemData: { name: string; description: string; contact?: string; imageUrl?: string }
   ): Promise<BotResult> {
     return this.saveReport(phoneNumber, platform, "found", itemData);
@@ -237,7 +240,7 @@ export class BotService {
   static async claimItem(
     itemId: string,
     phoneNumber: string,
-    platform: "whatsapp" | "telegram"
+    platform: BotPlatform
   ): Promise<BotResult> {
     try {
       const itemRef = doc(db, "items", itemId);
@@ -258,8 +261,14 @@ export class BotService {
         claimedBy: `${platform}:${phoneNumber}`,
       });
 
-      if (platform === "telegram" && data.contact) {
+      const reporterPlatform = (data.platform as BotPlatform | undefined) ?? platform;
+      if (data.contact && reporterPlatform === "telegram") {
         await this.notifyTelegramReporter(
+          String(data.contact),
+          `Your item "${data.name}" has been claimed.`
+        );
+      } else if (data.contact && reporterPlatform === "signal") {
+        await sendSignalMessage(
           String(data.contact),
           `Your item "${data.name}" has been claimed.`
         );
@@ -280,7 +289,7 @@ export class BotService {
    */
   static async createSupportTicket(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     supportText: string
   ): Promise<BotResult> {
     const parts = supportText
@@ -357,7 +366,7 @@ export class BotService {
   /**
    * Reset a user's conversation to idle.
    */
-  static resetSession(phoneNumber: string, platform: "whatsapp" | "telegram") {
+  static resetSession(phoneNumber: string, platform: BotPlatform) {
     const key = `${platform}:${phoneNumber}`;
     const user = this.userSessions.get(key);
     if (user) {
@@ -371,7 +380,7 @@ export class BotService {
    */
   static updateSessionState(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     state: BotUser["conversationState"],
     data?: Record<string, string>
   ) {
@@ -389,7 +398,7 @@ export class BotService {
 
   private static async saveReport(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     type: "lost" | "found",
     itemData: { name: string; description: string; contact?: string; imageUrl?: string }
   ): Promise<BotResult> {
@@ -423,7 +432,7 @@ export class BotService {
 
   private static async startOrCompleteReport(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     type: "lost" | "found",
     args: string[] | undefined,
     mediaUrl: string | null | undefined
@@ -438,7 +447,7 @@ export class BotService {
 
   private static async startOrCompleteSupport(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     args: string[] | undefined
   ) {
     if (args && args.length > 0) {
@@ -451,7 +460,7 @@ export class BotService {
 
   private static async completeActiveFlow(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     state: BotUser["conversationState"],
     message: string,
     mediaUrl: string | null
@@ -479,7 +488,7 @@ export class BotService {
 
   private static async saveReportFromText(
     phoneNumber: string,
-    platform: "whatsapp" | "telegram",
+    platform: BotPlatform,
     type: "lost" | "found",
     message: string,
     mediaUrl: string | null
