@@ -3,6 +3,10 @@ import Navbar from "./components/Navbar";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 
+// Computed once at module evaluation to avoid server/client year drift.
+// (The build year is stable for the life of the deployed bundle.)
+const COPYRIGHT_YEAR = new Date().getFullYear();
+
 export const metadata: Metadata = {
   title: {
     default: "FindIt · Lost & Found Registry",
@@ -20,8 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      {/* Browser extensions (e.g. Grammarly) sometimes inject attributes onto
+          <body> after SSR; suppressHydrationWarning lets React ignore those
+          harmless third-party attribute mismatches. */}
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <Navbar />
 
         <main className="flex-1">{children}</main>
@@ -35,7 +42,7 @@ export default function RootLayout({
               </p>
             </div>
             <p className="text-xs text-slate-600">
-              © {new Date().getFullYear()} FindIt · Lost &amp; Found Registry
+              © {COPYRIGHT_YEAR} FindIt · Lost &amp; Found Registry
             </p>
           </div>
         </footer>
