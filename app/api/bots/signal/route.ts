@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BotService } from "@/lib/bot-service";
-import { parseSignalWebhook, sendSignalMessage } from "@/lib/signal-client";
+import {
+  downloadSignalAttachment,
+  parseSignalWebhook,
+  pickImageAttachment,
+  sendSignalMessage,
+} from "@/lib/signal-client";
 
 function getBaseUrl() {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
@@ -34,14 +39,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    if (!incoming.text) {
-      return NextResponse.json({ ok: true });
+    // Download the first image attachment so the report flow can upload it.
+    const attachment = pickImageAttachment(incoming.attachments);
+    let mediaUrl: string | null = null;
+
+    if (attachment) {
+      const download = await downloadSignalAttachment(attachment, incoming.account);
+      mediaUrl = download.dataUrl;
     }
 
     const response = await BotService.handleIncomingMessage(
       incoming.source,
       "signal",
-      incoming.text
+      incoming.text,
+      mediaUrl
     );
 
     const sendResult = await sendSignalMessage(incoming.source, response, incoming.account);
@@ -53,6 +64,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           ok: true,
           response,
+          attachmentCount: incoming.attachments.length,
+          mediaUploaded: Boolean(mediaUrl),
           warning: sendResult.warning,
         });
       }

@@ -228,10 +228,11 @@ the other bots:
 /help
 ```
 
-> **Note on attachments:** the current Signal integration routes text messages
-> through the full FindIt flow. Attachments are acknowledged but not uploaded to
-> Cloudinary yet; use text descriptions for the photo-less web flow or add
-> attachment handling later.
+> **Attachments:** image attachments sent through Signal are downloaded from
+> `GET /v1/attachments/{id}` and uploaded to Cloudinary, then attached to the
+> reported item. Text flows are fully supported. If the Signal service is not
+> reachable, the webhook still processes the message text and the report is
+> saved without a photo.
 
 ---
 
