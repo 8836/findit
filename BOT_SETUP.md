@@ -101,8 +101,8 @@ curl -X POST https://api.telegram.org/bot{YOUR_BOT_TOKEN}/setWebhook \
 
 #### Method B: Polling (For local testing)
 ```bash
-# Run a polling script
-node scripts/telegram-polling.js
+# Run the polling helper against your local dev server
+node --env-file=.env.local scripts/telegram-polling.js
 ```
 
 ### Step 3: Add Environment Variables

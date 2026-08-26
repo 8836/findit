@@ -1,18 +1,19 @@
-﻿"use client";
+"use client";
+
 import { useState } from "react";
-import Image from "next/image";
-import { auth, ensureAuthPersistence, getFirebaseAuthErrorMessage } from "../../lib/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  notifySuccess,
-  notifyError,
-  notifyLoading,
-} from "../../lib/notify";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth, ensureAuthPersistence, getFirebaseAuthErrorMessage } from "@/lib/firebase";
+import { notifyError, notifyLoading, notifySuccess } from "@/lib/notify";
+import { AuthCard } from "@/app/components/AuthCard";
+import { Button } from "@/app/components/ui/Button";
+import { TextField } from "@/app/components/ui/Field";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -20,8 +21,13 @@ export default function SignupPage() {
     e.preventDefault();
     if (loading) return;
 
+    if (password !== confirmPassword) {
+      notifyError("Passwords do not match.");
+      return;
+    }
+
     const normalizedEmail = email.trim().toLowerCase();
-    const toastId = notifyLoading("Signing up...");
+    const toastId = notifyLoading("Creating your account...");
     setLoading(true);
 
     try {
@@ -39,77 +45,57 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 flex items-center justify-center p-6">
-      <div className="w-full max-w-lg">
-        <form
-          onSubmit={handleSignup}
-          className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-10 space-y-7 border border-white/20"
-        >
-          <div className="text-center mb-10">
-            <Image
-              src="/findit-logo-transparent.png"
-              alt="FindIt"
-              width={520}
-              height={300}
-              priority
-              className="mx-auto h-auto w-full max-w-sm"
-            />
-            <p className="mt-4 text-xl font-semibold text-sky-100">Create your account</p>
-          </div>
+    <AuthCard
+      title="Create your account"
+      subtitle="Start reporting and finding items in minutes."
+      afterCard={
+        <p className="mt-5 text-center text-sm text-white/70">
+          Already have an account?{" "}
+          <Link href="/login" className="font-semibold text-cyan-300 hover:text-cyan-100">
+            Login
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={handleSignup} className="space-y-5">
+        <TextField
+          id="email"
+          label="Email address"
+          type="email"
+          placeholder="your@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
 
-          <div>
-            <label className="block text-sm font-semibold text-white mb-3 uppercase tracking-[0.1em]">
-              Email address
-            </label>
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              required
-            />
-          </div>
+        <TextField
+          id="password"
+          label="Password"
+          type="password"
+          placeholder="At least 6 characters"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+          autoComplete="new-password"
+        />
 
-          <div>
-            <label className="block text-sm font-semibold text-white mb-3 uppercase tracking-[0.1em]">
-              Password
-            </label>
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              required
-            />
-          </div>
+        <TextField
+          id="confirm-password"
+          label="Confirm password"
+          type="password"
+          placeholder="Re-enter your password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          autoComplete="new-password"
+        />
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full bg-yellow-400 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 px-6 py-4 text-base font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
-          >
-            {loading ? "Creating account..." : "Sign Up"}
-          </button>
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/20"></div>
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-white/5 text-white/60">or</span>
-            </div>
-          </div>
-
-          <p className="text-sm text-white/70 text-center">
-            Already have an account?{" "}
-            <a href="/login" className="font-bold text-cyan-300 hover:text-cyan-100">
-              Login
-            </a>
-          </p>
-        </form>
-      </div>
-    </div>
+        <Button type="submit" variant="accent" fullWidth size="lg" loading={loading}>
+          {loading ? "Creating account..." : "Create account"}
+        </Button>
+      </form>
+    </AuthCard>
   );
 }

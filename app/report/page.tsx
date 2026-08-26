@@ -1,25 +1,65 @@
-﻿"use client";
+"use client";
+
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db, auth } from "../../lib/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { notifySuccess, notifyError, notifyLoading } from "../../lib/notify";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { ImagePlus, Send, UserRound, X } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { notifyError, notifyLoading, notifySuccess } from "@/lib/notify";
+import { Button } from "@/app/components/ui/Button";
+import { TextAreaField, TextField } from "@/app/components/ui/Field";
+import { cn } from "@/lib/utils";
+
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 export default function ReportPage() {
+  const [type, setType] = useState<"lost" | "found">("lost");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [contact, setContact] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
+  const selectFile = (nextFile: File | null) => {
+    if (!nextFile) {
+      setFile(null);
+      setPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      return;
+    }
+
+    if (!nextFile.type.startsWith("image/")) {
+      notifyError("Please choose an image file.");
+      return;
+    }
+    if (nextFile.size > MAX_FILE_BYTES) {
+      notifyError("Image must be 5MB or smaller.");
+      return;
+    }
+
+    setFile(nextFile);
+    setPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(nextFile);
+    });
+  };
 
   const toBase64 = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -31,13 +71,18 @@ export default function ReportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!user) {
-      notifyError("You must be logged in to report an item.");
+      notifyError("Please log in to report an item.");
       return;
     }
 
-    const toastId = notifyLoading("Submitting item...");
+    if (!name.trim() || !description.trim() || !contact.trim()) {
+      notifyError("Please complete every field.");
+      return;
+    }
+
+    setSubmitting(true);
+    const toastId = notifyLoading("Submitting your report...");
 
     try {
       let imageUrl = "";
@@ -51,23 +96,24 @@ export default function ReportPage() {
             body: JSON.stringify({ file: base64 }),
           });
           const data = await res.json();
-          if (data.url) {
-            imageUrl = data.url;
-          }
-        } catch (uploadErr) {
-          console.error("Cloudinary upload failed:", uploadErr);
-          notifyError("Image upload failed, but item was saved.", toastId);
+          if (data.url) imageUrl = data.url;
+          else notifyError("Image upload failed, but your report will still be saved.", toastId);
+        } catch (uploadError) {
+          console.error("Cloudinary upload failed:", uploadError);
+          notifyError("Image upload failed, but your report will still be saved.", toastId);
         }
       }
 
       await addDoc(collection(db, "items"), {
         uid: user.uid,
-        name,
-        description,
-        contact,
+        name: name.trim(),
+        description: description.trim(),
+        contact: contact.trim(),
+        type,
         imageUrl,
         createdAt: serverTimestamp(),
         claimed: false,
+        source: "web",
       });
 
       notifySuccess("Item reported successfully!", toastId);
@@ -76,122 +122,150 @@ export default function ReportPage() {
       setDescription("");
       setContact("");
       setFile(null);
-      setPreview(null);
-    } catch (err) {
-      console.error("Report submission failed:", err);
-      notifyError("Error reporting item. Please try again.", toastId);
+      setPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    } catch (error) {
+      console.error("Report submission failed:", error);
+      notifyError("Could not submit your report. Please try again.", toastId);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 flex items-center justify-center p-6">
-        <div className="text-center">
-          <p className="text-sky-100 font-medium text-lg">Please log in to report an item.</p>
-          <a
-            href="/login"
-            className="mt-4 inline-block rounded-full bg-yellow-400 hover:bg-yellow-300 px-8 py-3 font-bold text-blue-950"
-          >
-            Go to Login
-          </a>
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="card max-w-md p-8 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-800">
+            <UserRound className="h-7 w-7" aria-hidden />
+          </div>
+          <h1 className="mt-5 text-2xl font-bold text-slate-900">Login required</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            You need an account to report lost or found items.
+          </p>
+          <Link href="/login">
+            <Button variant="primary" className="mt-6">
+              Go to login
+            </Button>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 p-6">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-8 tracking-tight">Report a Lost Item</h1>
+    <div className="page-shell py-10">
+      <div className="mx-auto max-w-2xl">
+        <p className="text-xs font-bold uppercase tracking-[0.28em] text-blue-700">Report</p>
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+          {type === "lost" ? "Report a lost item" : "Register a found item"}
+        </h1>
+        <p className="mt-3 text-slate-500">
+          Share the details below. Adding a clear photo dramatically improves the chance of a reunion.
+        </p>
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white/10 backdrop-blur-md rounded-4xl shadow-2xl shadow-black/40 p-8 space-y-6 border border-white/20"
-        >
+        <form onSubmit={handleSubmit} className="card mt-8 space-y-6 p-6 sm:p-8">
           <div>
-            <label htmlFor="item-name" className="block text-sm font-semibold text-white mb-3 uppercase tracking-[0.1em]">
-              Item Name
-            </label>
-            <input
-              id="item-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="What item are you reporting?"
-              className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              required
-            />
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              What are you reporting?
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {(["lost", "found"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setType(option)}
+                  className={cn(
+                    "rounded-2xl border px-4 py-3 text-sm font-semibold transition",
+                    type === option
+                      ? "border-blue-900 bg-blue-900 text-white shadow-lg shadow-blue-950/20"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                  )}
+                >
+                  {option === "lost" ? "I lost this item" : "I found this item"}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="item-description" className="block text-sm font-semibold text-white mb-3 uppercase tracking-[0.1em]">
-              Description
-            </label>
-            <textarea
-              id="item-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the item in detail..."
-              className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              rows={4}
-              required
-            />
-          </div>
+          <TextField
+            id="name"
+            label="Item name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Black leather wallet"
+            required
+          />
+
+          <TextAreaField
+            id="description"
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Color, brand, distinguishing marks, where and when..."
+            rows={5}
+            required
+          />
+
+          <TextField
+            id="contact"
+            label="Best contact"
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder="Phone number or email"
+            required
+          />
 
           <div>
-            <label htmlFor="item-contact" className="block text-sm font-semibold text-white mb-3 uppercase tracking-[0.1em]">
-              Contact Info
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Photo <span className="font-normal text-slate-400">(optional)</span>
             </label>
-            <input
-              id="item-contact"
-              type="text"
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
-              placeholder="Phone or email"
-              className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="item-image" className="block text-sm font-semibold text-white mb-3 uppercase tracking-[0.1em]">
-              Upload Image (optional)
-            </label>
-            <input
-              id="item-image"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                setFile(file);
-                if (file) {
-                  setPreview(URL.createObjectURL(file));
-                } else {
-                  setPreview(null);
-                }
-              }}
-              className="w-full rounded-2xl border border-white/20 bg-white/5 px-5 py-3 text-white file:text-blue-950 file:bg-yellow-400 file:border-0 file:rounded-full file:px-4 file:py-2 file:cursor-pointer file:font-semibold hover:file:bg-yellow-300 transition"
-            />
-            {preview && (
-              <div className="mt-4 rounded-2xl overflow-hidden border border-white/20">
+            {preview ? (
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200">
                 <Image
                   src={preview}
                   alt="Preview"
                   width={640}
-                  height={320}
-                  className="w-full h-48 object-cover"
+                  height={360}
+                  className="h-64 w-full object-cover"
                   unoptimized
                 />
+                <button
+                  type="button"
+                  onClick={() => selectFile(null)}
+                  className="absolute right-3 top-3 rounded-full bg-slate-900/70 p-2 text-white hover:bg-slate-900"
+                  aria-label="Remove image"
+                >
+                  <X className="h-5 w-5" aria-hidden />
+                </button>
               </div>
+            ) : (
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center transition hover:border-blue-400 hover:bg-blue-50">
+                <ImagePlus className="h-10 w-10 text-slate-400" aria-hidden />
+                <p className="mt-3 text-sm font-semibold text-slate-600">Click to choose a photo</p>
+                <p className="mt-1 text-xs text-slate-400">PNG or JPG, up to 5MB</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
             )}
           </div>
 
-          <button
-            type="submit"
-            className="w-full rounded-full bg-yellow-400 hover:bg-yellow-300 px-6 py-3 text-sm font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition"
-          >
-            Submit Report
-          </button>
+          <Button type="submit" variant="primary" fullWidth size="lg" loading={submitting}>
+            {submitting ? (
+              "Submitting report..."
+            ) : (
+              <>
+                <Send className="h-4 w-4" aria-hidden />
+                Submit report
+              </>
+            )}
+          </Button>
         </form>
       </div>
     </div>

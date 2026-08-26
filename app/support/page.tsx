@@ -1,255 +1,226 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { notifySuccess, notifyError, notifyLoading, notifyDismiss } from '@/lib/notify';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { Clock3, LifeBuoy, Mail } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { notifyDismiss, notifyError, notifyLoading, notifySuccess } from "@/lib/notify";
+import { Button } from "@/app/components/ui/Button";
+import { SelectField, TextAreaField, TextField } from "@/app/components/ui/Field";
+
+const initialForm = {
+  name: "",
+  email: "",
+  subject: "",
+  message: "",
+  priority: "medium",
+};
 
 export default function SupportPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
-    priority: 'medium',
-  });
+  const [formData, setFormData] = useState(initialForm);
+  const [user, setUser] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        setFormData((prev) => ({
+          ...prev,
+          name: prev.name || currentUser.displayName || "",
+          email: prev.email || currentUser.email || "",
+        }));
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name.trim() || !formData.email.trim() || !formData.subject.trim() || !formData.message.trim()) {
-      notifyError('Please fill in all fields');
+      notifyError("Please complete every field.");
       return;
     }
-
-    // Basic email validation
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      notifyError('Please enter a valid email address');
+      notifyError("Please enter a valid email address.");
       return;
     }
 
     setIsSubmitting(true);
-    const toastId = notifyLoading('Sending your support ticket...');
+    const toastId = notifyLoading("Sending your support ticket...");
 
     try {
-      const supportCollection = collection(db, 'support_tickets');
-      await addDoc(supportCollection, {
+      await addDoc(collection(db, "support_tickets"), {
         name: formData.name.trim(),
         email: formData.email.trim(),
         subject: formData.subject.trim(),
         message: formData.message.trim(),
         priority: formData.priority,
-        status: 'open',
+        status: "open",
+        source: "web",
+        userId: user?.uid ?? null,
         createdAt: serverTimestamp(),
         replies: [],
       });
 
       notifyDismiss(toastId);
-      notifySuccess('Support ticket submitted! We\'ll get back to you soon.');
-      
-      // Reset form
-      setFormData({
-        name: '',
-        email: '',
-        subject: '',
-        message: '',
-        priority: 'medium',
-      });
+      notifySuccess("Support ticket submitted. We'll get back to you soon.");
+      setFormData(initialForm);
     } catch (error) {
-      console.error('Error submitting support ticket:', error);
+      console.error("Error submitting support ticket:", error);
       notifyDismiss(toastId);
-      notifyError('Failed to submit support ticket. Please try again.');
+      notifyError("Could not submit your ticket. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-purple-900 p-6 pt-24">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Support Center</h1>
-          <p className="text-sky-100 font-medium">
-            Have a question or issue? We&apos;re here to help. Submit a support ticket and we&apos;ll get back to you as soon as possible.
+    <div className="page-shell py-10">
+      <div className="mx-auto max-w-3xl">
+        <div className="text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-blue-700">Support</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+            How can we help?
+          </h1>
+          <p className="mt-3 text-slate-500">
+            Questions, issues, or feedback — submit a ticket and our team will follow up.
           </p>
         </div>
 
-        {/* Support Info Cards */}
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <div className="rounded-4xl bg-white/10 backdrop-blur-md p-6 border border-white/20">
-            <h3 className="text-lg font-bold text-white mb-2">Email Support</h3>
-            <p className="text-white/70 text-sm">
-              Email us directly at <a href="mailto:support@findit.local" className="text-yellow-300 hover:text-yellow-100 font-bold">support@findit.local</a>
-            </p>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="card flex items-center gap-4 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-800">
+              <Mail className="h-5 w-5" aria-hidden />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Email support</p>
+              <a href="mailto:support@findit.app" className="text-sm text-blue-700 hover:underline">
+                support@findit.app
+              </a>
+            </div>
           </div>
-          <div className="rounded-4xl bg-white/10 backdrop-blur-md p-6 border border-white/20">
-            <h3 className="text-lg font-bold text-white mb-2">Response Time</h3>
-            <p className="text-white/70 text-sm">
-              We typically respond within 24-48 hours during business days.
-            </p>
+          <div className="card flex items-center gap-4 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+              <Clock3 className="h-5 w-5" aria-hidden />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Response time</p>
+              <p className="text-sm text-slate-500">Usually within 24–48 hours.</p>
+            </div>
           </div>
         </div>
 
-        {/* Support Form */}
-        <div className="rounded-4xl bg-white/10 backdrop-blur-md p-8 border border-white/20">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Field */}
-            <div>
-              <label htmlFor="name" className="block text-xs uppercase tracking-[0.24em] text-sky-200 font-medium mb-3">
-                Full Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="John Doe"
-                className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="card mt-6 space-y-6 p-6 sm:p-8">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <TextField
+              id="name"
+              label="Full name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Jane Doe"
+              required
+            />
+            <TextField
+              id="email"
+              label="Email address"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="you@email.com"
+              required
+            />
+          </div>
 
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-xs uppercase tracking-[0.24em] text-sky-200 font-medium mb-3">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="your@email.com"
-                className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              />
-            </div>
-
-            {/* Subject Field */}
-            <div>
-              <label htmlFor="subject" className="block text-xs uppercase tracking-[0.24em] text-sky-200 font-medium mb-3">
-                Subject
-              </label>
-              <input
-                id="subject"
-                type="text"
-                name="subject"
-                value={formData.subject}
-                onChange={handleChange}
-                placeholder="Brief description of your issue"
-                className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              />
-            </div>
-
-            {/* Priority Field */}
-            <div>
-              <label htmlFor="priority" className="block text-xs uppercase tracking-[0.24em] text-sky-200 font-medium mb-3">
-                Priority
-              </label>
-              <select
-                id="priority"
-                name="priority"
-                value={formData.priority}
-                onChange={handleChange}
-                className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition"
-              >
-                <option value="low" className="bg-blue-950">Low - General inquiry</option>
-                <option value="medium" className="bg-blue-950">Medium - Issue affecting me</option>
-                <option value="high" className="bg-blue-950">High - Urgent issue</option>
-              </select>
-            </div>
-
-            {/* Message Field */}
-            <div>
-              <label htmlFor="message" className="block text-xs uppercase tracking-[0.24em] text-sky-200 font-medium mb-3">
-                Message
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                placeholder="Please describe your issue or question in detail..."
-                rows={6}
-                className="w-full rounded-2xl border border-white/30 bg-white/5 px-5 py-3 text-white placeholder-white/70 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition resize-none"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-full bg-yellow-400 hover:bg-yellow-300 disabled:bg-yellow-300/50 px-6 py-3 text-sm font-bold text-blue-950 shadow-lg shadow-yellow-400/30 transition disabled:cursor-not-allowed"
+          <div className="grid gap-6 sm:grid-cols-[2fr_1fr]">
+            <TextField
+              id="subject"
+              label="Subject"
+              name="subject"
+              value={formData.subject}
+              onChange={handleChange}
+              placeholder="What is this about?"
+              required
+            />
+            <SelectField
+              id="priority"
+              label="Priority"
+              name="priority"
+              value={formData.priority}
+              onChange={handleChange}
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Support Ticket'}
-            </button>
-          </form>
-        </div>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </SelectField>
+          </div>
 
-        {/* FAQ Section */}
+          <TextAreaField
+            id="message"
+            label="Message"
+            name="message"
+            value={formData.message}
+            onChange={handleChange}
+            placeholder="Please describe your issue or question..."
+            rows={6}
+            required
+          />
+
+          <Button type="submit" variant="primary" fullWidth size="lg" loading={isSubmitting}>
+            {isSubmitting ? "Submitting..." : "Submit support ticket"}
+          </Button>
+        </form>
+
         <div className="mt-12">
-          <h2 className="text-2xl font-bold text-white mb-6">Frequently Asked Questions</h2>
-          <div className="space-y-4">
-            <details className="rounded-4xl bg-white/10 backdrop-blur-md p-6 border border-white/20 cursor-pointer hover:bg-white/15 transition">
-              <summary className="font-bold text-white flex items-center justify-between">
-                <span>How do I report a lost item?</span>
-                <span className="text-yellow-300">+</span>
-              </summary>
-              <p className="mt-3 text-white/70">
-                Click on the &quot;Report&quot; button in the navigation menu and fill out the form with details about your lost item, including a photo if possible. We&apos;ll add it to our registry immediately.
-              </p>
-            </details>
-
-            <details className="rounded-4xl bg-white/10 backdrop-blur-md p-6 border border-white/20 cursor-pointer hover:bg-white/15 transition">
-              <summary className="font-bold text-white flex items-center justify-between">
-                <span>How do I claim a found item?</span>
-                <span className="text-yellow-300">+</span>
-              </summary>
-              <p className="mt-3 text-white/70">
-                Go to the Dashboard, find the item you&apos;re looking for, and click the &quot;Claim Item&quot; button. The original reporter will be notified and can contact you directly.
-              </p>
-            </details>
-
-            <details className="rounded-4xl bg-white/10 backdrop-blur-md p-6 border border-white/20 cursor-pointer hover:bg-white/15 transition">
-              <summary className="font-bold text-white flex items-center justify-between">
-                <span>Can I use FindIt on WhatsApp or Telegram?</span>
-                <span className="text-yellow-300">+</span>
-              </summary>
-              <p className="mt-3 text-white/70">
-                Yes! We offer WhatsApp and Telegram bots that mirror all the functionality of the web app. You can report items, search the registry, and claim items directly from your messaging app.
-              </p>
-            </details>
-
-            <details className="rounded-4xl bg-white/10 backdrop-blur-md p-6 border border-white/20 cursor-pointer hover:bg-white/15 transition">
-              <summary className="font-bold text-white flex items-center justify-between">
-                <span>How long does it take to get a response?</span>
-                <span className="text-yellow-300">+</span>
-              </summary>
-              <p className="mt-3 text-white/70">
-                Support tickets are typically reviewed within 24-48 hours during business days. Urgent issues may be prioritized for faster response.
-              </p>
-            </details>
+          <h2 className="text-center text-2xl font-bold text-slate-900">Frequently asked questions</h2>
+          <div className="mt-6 space-y-4">
+            {[
+              {
+                q: "How do I report a lost item?",
+                a: "Go to the Report page, choose “I lost this item,” fill in the details, and include a photo if possible. It appears on the registry immediately.",
+              },
+              {
+                q: "How do I claim a found item?",
+                a: "Open the item on the registry or dashboard, then use the claim action. We update the status and connect you with the reporter promptly.",
+              },
+              {
+                q: "Can I use FindIt on WhatsApp or Telegram?",
+                a: "Yes. Our bots support reporting, searching, claiming, and support tickets through WhatsApp and Telegram.",
+              },
+              {
+                q: "How long does it take to get a response?",
+                a: "Support tickets are typically reviewed within 24–48 hours during business days. Urgent issues may be prioritized.",
+              },
+            ].map(({ q, a }) => (
+              <details key={q} className="card group cursor-pointer p-5 open:shadow-lg">
+                <summary className="flex items-center justify-between font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
+                  {q}
+                  <LifeBuoy className="h-4 w-4 text-slate-400 transition group-open:rotate-90" aria-hidden />
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-slate-500">{a}</p>
+              </details>
+            ))}
           </div>
         </div>
 
-        {/* Back to Home */}
-        <div className="mt-8 text-center">
-          <Link href="/" className="text-cyan-300 hover:text-cyan-100 font-bold">
-            Back to Home
+        <p className="mt-10 text-center text-sm">
+          <Link href="/" className="font-semibold text-blue-800 hover:underline">
+            Back to home
           </Link>
-        </div>
+        </p>
       </div>
-    </main>
+    </div>
   );
 }

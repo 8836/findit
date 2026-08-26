@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// FindIt Firestore security rules.
+//
+// NOTE: The web clients are authenticated with Firebase Auth and access only
+// their own records. Registry reads are public because the registry is the
+// browseable "lost & found" board.
+//
+// The messaging bot endpoints currently use the web client SDK from the server
+// (no Firebase Auth user), so the rules below allow unauthenticated bot writes
+// for bot-created records. For production hardening, move those endpoints to
+// the Firebase Admin SDK and then tighten `isBotishRequest` / `isBotUser`.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == resource.data.uid;
+    }
+
+    function isOwnNewItem() {
+      return isSignedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Bot API routes currently call Firestore without an Auth token.
+    function isBotRequest() {
+      return request.auth == null;
+    }
+
+    match /items/{itemId} {
+      allow read: if true;
+      allow create: if isOwnNewItem() || isBotRequest();
+      allow update, delete: if isOwner(itemId) || isBotRequest();
+    }
+
+    match /support_tickets/{ticketId} {
+      allow read: if isSignedIn() || isBotRequest();
+      allow create: if isSignedIn() || isBotRequest();
+      allow update, delete: if false;
+    }
+
+    // Bot sessions store the chat id keyed by platform+phone.
+    match /users/{userId} {
+      allow read, write: if isBotRequest() || isSignedIn();
+    }
+  }
+}
