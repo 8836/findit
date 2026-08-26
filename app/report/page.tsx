@@ -142,7 +142,7 @@ export default function ReportPage() {
             <UserRound className="h-7 w-7" aria-hidden />
           </div>
           <h1 className="mt-5 text-2xl font-bold text-slate-900">Login required</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-600">
             You need an account to report lost or found items.
           </p>
           <Link href="/login">
@@ -162,13 +162,13 @@ export default function ReportPage() {
         <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
           {type === "lost" ? "Report a lost item" : "Register a found item"}
         </h1>
-        <p className="mt-3 text-slate-500">
+        <p className="mt-3 text-slate-600">
           Share the details below. Adding a clear photo dramatically improves the chance of a reunion.
         </p>
 
         <form onSubmit={handleSubmit} className="card mt-8 space-y-6 p-6 sm:p-8">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
               What are you reporting?
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -219,8 +219,8 @@ export default function ReportPage() {
           />
 
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Photo <span className="font-normal text-slate-400">(optional)</span>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+              Photo <span className="font-normal text-slate-600">(optional)</span>
             </label>
             {preview ? (
               <div className="relative overflow-hidden rounded-3xl border border-slate-200">
@@ -243,9 +243,9 @@ export default function ReportPage() {
               </div>
             ) : (
               <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center transition hover:border-blue-400 hover:bg-blue-50">
-                <ImagePlus className="h-10 w-10 text-slate-400" aria-hidden />
+                <ImagePlus className="h-10 w-10 text-slate-500" aria-hidden />
                 <p className="mt-3 text-sm font-semibold text-slate-600">Click to choose a photo</p>
-                <p className="mt-1 text-xs text-slate-400">PNG or JPG, up to 5MB</p>
+                <p className="mt-1 text-xs text-slate-600">PNG or JPG, up to 5MB</p>
                 <input
                   type="file"
                   accept="image/*"

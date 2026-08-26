@@ -101,7 +101,7 @@ export default function ProfilePage() {
       <div className="flex min-h-[50vh] items-center justify-center px-4">
         <div className="card max-w-md p-8 text-center">
           <h1 className="text-2xl font-bold text-slate-900">Sign in required</h1>
-          <p className="mt-2 text-sm text-slate-500">Log in to view your profile and activity.</p>
+          <p className="mt-2 text-sm text-slate-600">Log in to view your profile and activity.</p>
           <Link href="/login">
             <Button variant="primary" className="mt-6">
               Go to login
@@ -159,20 +159,20 @@ export default function ProfilePage() {
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         <div className="card p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">Most recent report</p>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-600">Most recent report</p>
           <p className="mt-2 font-semibold text-slate-900">
             {mostRecentReport?.name ?? "No reports yet"}
           </p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-600">
             {formatDate(mostRecentReport?.createdAt)}
           </p>
         </div>
         <div className="card p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">Latest claim</p>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-600">Latest claim</p>
           <p className="mt-2 font-semibold text-slate-900">
             {mostRecentClaim?.name ?? "No claims yet"}
           </p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-600">
             {formatDate(mostRecentClaim?.claimedAt)}
           </p>
         </div>
@@ -182,7 +182,7 @@ export default function ProfilePage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-bold text-slate-900">Your reported items</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-600">
               {items.length} item{items.length === 1 ? "" : "s"}
             </p>
           </div>
@@ -208,13 +208,13 @@ export default function ProfilePage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-slate-900">{item.name}</h3>
-                      <p className="mt-1 line-clamp-2 text-sm text-slate-500">{item.description}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-600">{item.description}</p>
                     </div>
                     <Badge tone={item.claimed ? "success" : "warning"}>
                       {item.claimed ? "Claimed" : "Open"}
                     </Badge>
                   </div>
-                  <div className="mt-4 space-y-1 text-sm text-slate-500">
+                  <div className="mt-4 space-y-1 text-sm text-slate-600">
                     <p>Contact: {item.contact}</p>
                     <p>Reported: {formatDate(item.createdAt)}</p>
                     {item.claimedAt && <p>Claimed: {formatDate(item.claimedAt)}</p>}

@@ -130,7 +130,7 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">
             Everything you need to reunite items
           </h2>
-          <p className="mt-3 text-slate-500">
+          <p className="mt-3 text-slate-600">
             A clean, fast experience that works on every device and in your messaging apps.
           </p>
         </div>
@@ -145,7 +145,7 @@ export default function HomePage() {
                 <Icon className="h-6 w-6" aria-hidden />
               </div>
               <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500">{description}</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{description}</p>
             </div>
           ))}
         </div>
@@ -176,7 +176,7 @@ export default function HomePage() {
             <h2 className="text-2xl font-bold text-slate-900">
               {user ? "Track your reports from your dashboard" : "Ready to find what's yours?"}
             </h2>
-            <p className="mt-2 text-slate-500">
+            <p className="mt-2 text-slate-600">
               {user
                 ? "Manage your reports, claim statuses, and support tickets in one place."
                 : "Create a free account and start reporting lost or found items today."}

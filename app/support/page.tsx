@@ -93,7 +93,7 @@ export default function SupportPage() {
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
             How can we help?
           </h1>
-          <p className="mt-3 text-slate-500">
+          <p className="mt-3 text-slate-600">
             Questions, issues, or feedback — submit a ticket and our team will follow up.
           </p>
         </div>
@@ -116,7 +116,7 @@ export default function SupportPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-900">Response time</p>
-              <p className="text-sm text-slate-500">Usually within 24–48 hours.</p>
+              <p className="text-sm text-slate-600">Usually within 24–48 hours.</p>
             </div>
           </div>
         </div>
@@ -207,9 +207,9 @@ export default function SupportPage() {
               <details key={q} className="card group cursor-pointer p-5 open:shadow-lg">
                 <summary className="flex items-center justify-between font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
                   {q}
-                  <LifeBuoy className="h-4 w-4 text-slate-400 transition group-open:rotate-90" aria-hidden />
+                  <LifeBuoy className="h-4 w-4 text-slate-500 transition group-open:rotate-90" aria-hidden />
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed text-slate-500">{a}</p>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">{a}</p>
               </details>
             ))}
           </div>

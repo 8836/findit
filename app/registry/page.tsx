@@ -91,13 +91,13 @@ export default function RegistryPage() {
         <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
           Lost &amp; Found Registry
         </h1>
-        <p className="mt-3 text-slate-500">
+        <p className="mt-3 text-slate-600">
           Browse everything the community has reported. Search by item, description, or contact.
         </p>
       </div>
 
       <div className="card mx-auto mt-8 flex max-w-2xl items-center gap-2 p-3">
-        <Search className="ml-2 h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+        <Search className="ml-2 h-5 w-5 shrink-0 text-slate-500" aria-hidden />
         <input
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -161,13 +161,13 @@ export default function RegistryPage() {
 
                   <div className="p-5">
                     <h2 className="text-lg font-bold text-slate-900">{item.name}</h2>
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">{item.description}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-600">{item.description}</p>
 
-                    <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
-                      <MapPin className="h-4 w-4 text-slate-400" aria-hidden />
+                    <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
+                      <MapPin className="h-4 w-4 text-slate-500" aria-hidden />
                       <span className="truncate">{item.contact}</span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-400">Reported {formatDate(item.createdAt)}</p>
+                    <p className="mt-1 text-xs text-slate-600">Reported {formatDate(item.createdAt)}</p>
                   </div>
                 </article>
               ))}

@@ -43,7 +43,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             aria-label="Close"
           >
             <X className="h-5 w-5" />

@@ -187,7 +187,7 @@ export default function DashboardPage() {
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
             My Reported Items
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-slate-500">
+          <p className="mt-2 max-w-xl text-sm text-slate-600">
             Manage your reports, claim statuses, and keep the community informed.
           </p>
         </div>
@@ -207,7 +207,7 @@ export default function DashboardPage() {
 
       <div className="card mt-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden />
           <input
             type="text"
             value={searchTerm}
@@ -269,7 +269,7 @@ export default function DashboardPage() {
                     unoptimized
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-slate-400">
+                  <div className="flex h-full items-center justify-center text-slate-500">
                     <Package className="h-12 w-12" aria-hidden />
                   </div>
                 )}
@@ -284,22 +284,22 @@ export default function DashboardPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">{item.name}</h2>
-                    <p className="mt-1 text-sm line-clamp-2 text-slate-500">{item.description}</p>
+                    <p className="mt-1 text-sm line-clamp-2 text-slate-600">{item.description}</p>
                   </div>
                 </div>
 
                 <dl className="mt-5 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
                   <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Contact</dt>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-600">Contact</dt>
                     <dd className="mt-0.5 truncate">{item.contact}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Reported</dt>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-600">Reported</dt>
                     <dd className="mt-0.5">{formatDate(item.createdAt)}</dd>
                   </div>
                   {item.claimedAt && (
                     <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Claimed</dt>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-600">Claimed</dt>
                       <dd className="mt-0.5">{formatDate(item.claimedAt)}</dd>
                     </div>
                   )}
@@ -380,7 +380,7 @@ function CardLoginRequired() {
   return (
     <div className="card max-w-md p-8 text-center">
       <h2 className="text-2xl font-bold text-slate-900">Sign in required</h2>
-      <p className="mt-2 text-sm text-slate-500">
+      <p className="mt-2 text-sm text-slate-600">
         Log in to view your reported items and dashboard.
       </p>
       <Link href="/login">

@@ -5,7 +5,7 @@ function Label({ id, children }: { id?: string; children: ReactNode }) {
   return (
     <label
       htmlFor={id}
-      className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"
+      className="mb-2 block text-sm font-semibold uppercase tracking-[0.14em] text-slate-600"
     >
       {children}
     </label>

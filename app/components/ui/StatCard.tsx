@@ -24,8 +24,8 @@ export function StatCard({ label, value, icon: Icon, tone = "slate" }: StatCardP
         </div>
       )}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-        <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.12em] text-slate-600">{label}</p>
+        <p className="tabular-nums mt-1 text-2xl font-bold text-slate-900">{value}</p>
       </div>
     </div>
   );

@@ -30,11 +30,11 @@ export default function RootLayout({
           <div className="page-shell flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
             <div>
               <p className="text-sm font-semibold text-slate-800">FindIt</p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-600">
                 A community-powered lost &amp; found registry.
               </p>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-600">
               © {new Date().getFullYear()} FindIt · Lost &amp; Found Registry
             </p>
           </div>

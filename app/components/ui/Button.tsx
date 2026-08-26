@@ -17,18 +17,18 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-blue-900 text-white shadow-lg shadow-blue-900/20 hover:bg-blue-800",
+    "bg-blue-800 text-white shadow-lg shadow-blue-800/25 hover:bg-blue-700",
   accent:
-    "bg-amber-400 text-blue-950 shadow-lg shadow-amber-400/25 hover:bg-amber-300",
+    "bg-amber-500 text-amber-950 shadow-lg shadow-amber-500/25 hover:bg-amber-400",
   secondary:
-    "bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200",
+    "bg-white text-slate-800 border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-300",
   ghost: "bg-transparent text-slate-700 hover:bg-slate-100",
   danger:
-    "bg-red-600 text-white shadow-lg shadow-red-600/20 hover:bg-red-500",
+    "bg-red-700 text-white shadow-lg shadow-red-700/25 hover:bg-red-600",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "px-3.5 py-2 text-xs rounded-full",
+  sm: "px-3.5 py-2 text-sm rounded-full",
   md: "px-5 py-2.5 text-sm rounded-full",
   lg: "px-7 py-3.5 text-base rounded-full",
 };
@@ -43,7 +43,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          "inline-flex items-center justify-center gap-2 font-semibold transition-colors disabled:opacity-60",
+          "inline-flex items-center justify-center gap-2 font-semibold tracking-tight transition-colors disabled:opacity-60",
           variantClasses[variant],
           sizeClasses[size],
           fullWidth && "w-full",
